@@ -26,7 +26,7 @@
 | --- | --- | --- | --- | --- |
 | 32605150621 | 王鸿 | [WangHong3501](https://github.com/WangHong3501) | 组长、仓库创建者 | 进度管理、main 分支合并、冲突协调、文档汇总；兼任登录、路由守卫和个人中心（嵌套路由）开发 |
 | 32605150622 | 李岷鳌 | [21231gb](https://github.com/21231gb) | 组员、仓库协作者 | Pinia 用户及点餐车仓库、persist 持久化；构建、优化与部署上线 |
-| 32605150604 | 翟毅 | [lulu1hao](https://github.com/lulu1hao) | 组员、仓库协作者 | 菜单列表、菜品详情（动态路由）；档口菜品管理及 Dialog 增删改 |
+| 32605150604 | 翟毅 | [lulululululu28](https://github.com/lulululululu28) | 组员、仓库协作者 | 菜单列表、菜品详情（动态路由）；档口菜品管理及 Dialog 增删改 |
 | 32605150601 | 陈续文 | [xuwen-max](https://github.com/xuwen-max) | 组员、仓库协作者 | db.json 数据模型、json-server 接口、Axios 统一封装；请求 loading 状态与 catch 异常处理 |
 | 32605150615 | 江贤松 | [u12306q](https://github.com/u12306q) | 组员、仓库协作者 | Vant 移动端页面（菜单、点餐车、提交订单）；Element Plus 布局与界面风格统一 |
 
