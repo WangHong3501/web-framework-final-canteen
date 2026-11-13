@@ -1,0 +1,37 @@
+:root {
+  font-family: 'DM Sans Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #24352c;
+  background: #f6f7f3;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --forest: #234b36;
+  --forest-hover: #335f45;
+  --leaf: #d5edaa;
+  --canvas: #f6f7f3;
+  --ink: #24352c;
+  --muted: #586653;
+  --line: #e5e9e0;
+  --surface: #fff;
+  --el-color-primary: #234b36;
+  --el-color-primary-light-3: #50785a;
+  --el-color-primary-light-5: #8aa58e;
+  --el-color-primary-light-7: #c3d4c6;
+  --el-color-primary-light-8: #dbe6d9;
+  --el-color-primary-light-9: #f0f5eb;
+  --el-color-primary-dark-2: #183d29;
+  --el-text-color-primary: #24352c;
+  --el-text-color-regular: #44554a;
+  --el-text-color-secondary: #586653;
+  --el-text-color-placeholder: #667360;
+  --el-color-success: #3c7135;
+  --el-color-danger: #a63c34;
+  --el-color-warning: #80602b;
+  --el-color-info: #586653;
+  --el-border-color: #dfe5db;
+  --el-border-color-light: #e9ede5;
+  --el-border-radius-base: 10px;
+  --el-font-family: 'DM Sans Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --el-font-size-base: 14px;
+  --el-component-size: 46px;
+}

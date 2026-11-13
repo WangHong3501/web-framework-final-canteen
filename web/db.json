@@ -1,0 +1,46 @@
+{
+  "users": [
+    {
+      "id": "student-1",
+      "account": "32605150621",
+      "name": "王鸿",
+      "displayName": "王鸿",
+      "studentId": "32605150621",
+      "role": "student",
+      "phone": "",
+      "email": "",
+      "canteen": "第一食堂",
+      "avatarTone": "leaf",
+      "preferences": {
+        "spice": "mild",
+        "cuisines": ["家常小炒"],
+        "avoidIngredients": [],
+        "mealTime": "11:30–12:00"
+      },
+      "lastLoginAt": null
+    },
+    {
+      "id": "merchant-1",
+      "account": "merchant01",
+      "name": "档口管理员",
+      "displayName": "青禾小厨",
+      "studentId": "",
+      "role": "merchant",
+      "stallId": "stall-1",
+      "phone": "",
+      "email": "",
+      "canteen": "第一食堂",
+      "avatarTone": "oat",
+      "preferences": {
+        "spice": "mild",
+        "cuisines": [],
+        "avoidIngredients": [],
+        "mealTime": "11:30–12:00"
+      },
+      "lastLoginAt": null
+    }
+  ],
+  "stalls": [{ "id": "stall-1", "name": "青禾小厨", "canteen": "第一食堂" }],
+  "dishes": [],
+  "orders": []
+}

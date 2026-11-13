@@ -31,3 +31,11 @@ Desktop.ini
 
 # Temporary Office files
 ~$*
+
+# Local browser tests and generated runtime data
+.cache/
+test-results/
+playwright-report/
+*.runtime.json
+*.runtime.json.tmp
+.local/
