@@ -1,4 +1,5 @@
 <script>
+import './status.css'
 import BrandMark from '@/components/ui/BrandMark.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 export default {

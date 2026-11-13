@@ -1,4 +1,5 @@
 <script>
+import './account.css'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { mapStores } from 'pinia'
 import { useUserStore } from '@/stores/user'

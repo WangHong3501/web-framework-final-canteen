@@ -1,4 +1,5 @@
 <script>
+import './login.css'
 import { ElMessage } from 'element-plus'
 import { mapStores } from 'pinia'
 import { useUserStore } from '@/stores/user'

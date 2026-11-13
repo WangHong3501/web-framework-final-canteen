@@ -78,9 +78,28 @@ try {
   })
   const page = await context.newPage()
   const runtimeErrors = []
+  const requestedStyles = new Set()
+  page.on('response', (response) => {
+    const pathname = new URL(response.url()).pathname
+    if (pathname.endsWith('.css')) requestedStyles.add(pathname)
+  })
   page.on('pageerror', (error) => runtimeErrors.push(error.message))
   await page.goto('http://127.0.0.1:4175/#/login')
   await audit(page, 'login')
+  const loginStyles = [...requestedStyles]
+  if (loginStyles.some((file) => file.includes('CenterLayout')))
+    throw new Error('Account CSS was eagerly loaded on the login page.')
+  const loginCssBytes = loginStyles.reduce(
+    (sum, file) => sum + fs.statSync(path.join(root, 'dist/assets', path.basename(file))).size,
+    0,
+  )
+  fs.writeFileSync(
+    path.join(root, '.local/preview-css.json'),
+    JSON.stringify({ loginStyles, loginCssBytes }, null, 2),
+  )
+  console.log(
+    `PASS route style ownership: login requests ${loginStyles.length} CSS files, ${loginCssBytes} bytes; account CSS stays deferred.`,
+  )
   await page.screenshot({
     path: path.resolve(root, '../screenshots/G5-01-登录-桌面.png'),
     fullPage: true,
