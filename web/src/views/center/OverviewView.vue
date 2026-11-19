@@ -1,4 +1,11 @@
 <script>
+import StatusTag from '@/components/ui/StatusTag.vue'
+import FoodCard from '@/components/ui/FoodCard.vue'
+import PriceTag from '@/components/ui/PriceTag.vue'
+import OrderStatusFlow from '@/components/ui/OrderStatusFlow.vue'
+import PickupCode from '@/components/ui/PickupCode.vue'
+import MealSwitch from '@/components/ui/MealSwitch.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { mapStores } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { accountApi } from '@/api/account'
@@ -8,8 +15,20 @@ import { campusGreeting } from '@/utils/time'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import SectionPanel from '@/components/ui/SectionPanel.vue'
 import StateNotice from '@/components/ui/StateNotice.vue'
+
 export default {
-  components: { AppIcon, SectionPanel, StateNotice },
+  components: {
+    AppIcon,
+    SectionPanel,
+    StateNotice,
+    StatusTag,
+    FoodCard,
+    PriceTag,
+    OrderStatusFlow,
+    PickupCode,
+    MealSwitch,
+    EmptyState,
+  },
   data() {
     return {
       summary: null,
@@ -17,6 +36,26 @@ export default {
       error: '',
       assetBase: import.meta.env.BASE_URL,
       now: new Date(),
+      meal: 'lunch',
+      testFood: {
+        name: '招牌红烧肉饭',
+        desc: '肥而不腻，招牌必点',
+        price: 12,
+        originalPrice: 15,
+        image: `${import.meta.env.BASE_URL}images/hongshaorou.jpg`,
+        status: 'success',
+        badges: ['招牌'],
+        spice: 1,
+      },
+      soldFood: {
+        name: '香煎鸡腿饭',
+        desc: '外酥里嫩，午间人气王',
+        price: 14,
+        image: `${import.meta.env.BASE_URL}images/jilifan.jpg`,
+        status: 'sold',
+        badges: ['新品'],
+        tags: [{ type: 'veg', text: '含时蔬' }],
+      },
     }
   },
   computed: {
@@ -74,11 +113,73 @@ export default {
     orderLabel(status) {
       return status === 'completed' ? '已完成' : '待取餐'
     },
+    orderTagType(status) {
+      return status === 'completed' ? 'success' : 'warning'
+    },
   },
 }
 </script>
+
 <template>
   <div ref="page" class="overview-page">
+    <!-- 组件规范演示区：答辩用，正式上线可删除 -->
+    <section class="component-test" data-enter>
+      <SectionPanel title="组件规范预览" subtitle="统一设计令牌 · 双端一致的业务组件">
+        <div class="spec-group">
+          <span class="spec-caption">状态标签</span>
+          <div class="spec-row">
+            <StatusTag type="success" text="可点餐" />
+            <StatusTag type="warning" text="余量少" />
+            <StatusTag type="danger" text="已售罄" />
+            <StatusTag type="info" text="已下架" />
+            <StatusTag type="brand" text="招牌" />
+            <StatusTag type="new" text="新品" />
+            <StatusTag type="hot" text="微辣" />
+            <StatusTag type="veg" text="素食" />
+            <StatusTag type="halal" text="清真" />
+          </div>
+        </div>
+
+        <div class="spec-group">
+          <span class="spec-caption">菜品卡片（4:3 图片 · 售罄遮罩 · 价格规范）</span>
+          <div class="spec-row spec-row--cards">
+            <FoodCard :food="testFood">
+              <template #action>
+                <button class="text-button" type="button">加入餐车</button>
+              </template>
+            </FoodCard>
+            <FoodCard :food="soldFood" />
+          </div>
+        </div>
+
+        <div class="spec-group">
+          <span class="spec-caption">价格组件（列表价 / 辅助价 / 划线原价 / 详情大价）</span>
+          <div class="spec-row">
+            <PriceTag :value="12" />
+            <PriceTag :value="12.5" variant="muted" />
+            <PriceTag :value="9.9" :original="15" />
+            <PriceTag :value="26" size="lg" />
+          </div>
+        </div>
+
+        <div class="spec-row spec-row--split">
+          <div class="spec-group">
+            <span class="spec-caption">订单状态流</span>
+            <OrderStatusFlow status="ready" />
+          </div>
+          <div class="spec-group">
+            <span class="spec-caption">取餐码</span>
+            <PickupCode code="A28" window="3 号窗口" eta="12:20 前" size="sm" />
+          </div>
+        </div>
+
+        <div class="spec-group">
+          <span class="spec-caption">餐次切换</span>
+          <MealSwitch v-model="meal" />
+        </div>
+      </SectionPanel>
+    </section>
+
     <div class="page-heading" data-enter>
       <div>
         <p class="breadcrumb">个人中心 / 食光概览</p>
@@ -99,6 +200,7 @@ export default {
         }}</span
       >
     </div>
+
     <section class="overview-hero" data-enter>
       <div class="overview-hero__copy">
         <span class="hero-leaf"><AppIcon name="Leaf" :size="17" />属于你的校园食光</span>
@@ -115,6 +217,7 @@ export default {
         >
       </div>
     </section>
+
     <div v-if="loading" class="metrics-strip" aria-label="正在加载账户摘要">
       <el-skeleton :rows="1" animated />
     </div>
@@ -157,6 +260,7 @@ export default {
         /></router-link>
       </div>
     </section>
+
     <div class="overview-grid" data-enter>
       <SectionPanel
         title="我的校园名片"
@@ -198,23 +302,106 @@ export default {
         </div></SectionPanel
       >
     </div>
+
     <SectionPanel
       title="最近的点餐记录"
       subtitle="每一餐的好食光，都值得记住"
       action-label="查看订单"
       @action="$router.push('/orders')"
-      ><div v-if="summary?.recentOrders?.length" class="recent-orders">
+    >
+      <div v-if="summary?.recentOrders?.length" class="recent-orders">
         <div v-for="order in summary.recentOrders" :key="order.id">
-          <span>订单 {{ order.id }}</span
-          ><span>{{ orderLabel(order.status) }}</span
-          ><strong>¥{{ Number(order.total).toFixed(2) }}</strong>
+          <span class="order-id">订单 {{ order.id }}</span>
+          <StatusTag
+            :type="orderTagType(order.status)"
+            :text="orderLabel(order.status)"
+            size="sm"
+            dot
+          />
+          <PriceTag :value="order.total" size="sm" />
         </div>
       </div>
-      <StateNotice
+      <EmptyState
         v-else
         title="好食光，从下一餐开始"
         detail="还没有点餐记录。先完善口味偏好，期待下一次美味相遇。"
+        action-label="设置用餐偏好"
+        icon="ReceiptText"
         compact
-    /></SectionPanel>
+        @action="$router.push('/center/preferences')"
+      />
+    </SectionPanel>
   </div>
 </template>
+
+<style scoped>
+.component-test {
+  margin-bottom: 24px;
+}
+
+.spec-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spec-group + .spec-group,
+.spec-row + .spec-group {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.spec-caption {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.spec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.spec-row--cards {
+  gap: 16px;
+}
+
+.spec-row--cards > * {
+  flex: 0 0 272px;
+  max-width: 100%;
+}
+
+.spec-row--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.spec-row--split .spec-row + .spec-group {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.recent-orders > div {
+  align-items: center;
+}
+
+.recent-orders .order-id {
+  margin-right: auto;
+}
+
+@media (max-width: 900px) {
+  .spec-row--split {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+</style>

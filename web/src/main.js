@@ -53,6 +53,8 @@ import { AUTH_STORAGE_KEY } from './utils/auth-storage'
 import { safeDestination } from './router/policy'
 import './styles/tokens.css'
 import './styles/global.css'
+import './styles/overrides.css'
+import './styles/desktop-density.css'
 
 const app = createApp(App)
 const pinia = createPinia().use(piniaPluginPersistedstate)

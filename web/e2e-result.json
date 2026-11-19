@@ -1,0 +1,223 @@
+{
+  "pass": 43,
+  "total": 43,
+  "fail": [],
+  "consoleErrors": [],
+  "results": [
+    {
+      "name": "登录页·商家身份切换",
+      "ok": true,
+      "detail": "class=active"
+    },
+    {
+      "name": "登录页·帮助弹窗",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "桌面金刚区·立即点餐",
+      "ok": true,
+      "detail": "route=/menu cards=6->6 meal=午餐 kw="
+    },
+    {
+      "name": "桌面金刚区·我的订单",
+      "ok": true,
+      "detail": "route=/orders cards=6->0 meal= kw="
+    },
+    {
+      "name": "桌面金刚区·早餐",
+      "ok": true,
+      "detail": "route=/menu cards=6->3 meal=早餐 kw="
+    },
+    {
+      "name": "桌面金刚区·午餐",
+      "ok": true,
+      "detail": "route=/menu cards=6->6 meal=午餐 kw="
+    },
+    {
+      "name": "桌面金刚区·晚餐",
+      "ok": true,
+      "detail": "route=/menu cards=6->2 meal=晚餐 kw="
+    },
+    {
+      "name": "桌面金刚区·轻食素食",
+      "ok": true,
+      "detail": "route=/menu cards=6->1 meal=午餐 kw="
+    },
+    {
+      "name": "桌面金刚区·招牌推荐",
+      "ok": true,
+      "detail": "route=/menu cards=6->1 meal=午餐 kw="
+    },
+    {
+      "name": "桌面金刚区·我的餐车",
+      "ok": true,
+      "detail": "route=/cart cards=6->0 meal= kw="
+    },
+    {
+      "name": "桌面·餐次切换生效",
+      "ok": true,
+      "detail": "午餐->早餐"
+    },
+    {
+      "name": "桌面·分类切换生效",
+      "ok": true,
+      "detail": "全部->面食米线"
+    },
+    {
+      "name": "桌面·搜索过滤",
+      "ok": true,
+      "detail": "结果=0"
+    },
+    {
+      "name": "桌面·餐次同步到购物车",
+      "ok": true,
+      "detail": "cart.meal=breakfast"
+    },
+    {
+      "name": "桌面·加菜按钮",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "桌面·步进器加号",
+      "ok": true,
+      "detail": "1->2"
+    },
+    {
+      "name": "桌面·步进器减号",
+      "ok": true,
+      "detail": "2->1"
+    },
+    {
+      "name": "桌面·去结算跳转",
+      "ok": true,
+      "detail": "/cart"
+    },
+    {
+      "name": "购物车·移除菜品",
+      "ok": true,
+      "detail": "1->0"
+    },
+    {
+      "name": "购物车·提交订单并跳转",
+      "ok": true,
+      "detail": "/order/SG8309879142CA"
+    },
+    {
+      "name": "订单·状态筛选",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "订单·详情跳转",
+      "ok": true,
+      "detail": "当前无订单可点，跳过"
+    },
+    {
+      "name": "个人中心·校园菜单",
+      "ok": true,
+      "detail": "/menu"
+    },
+    {
+      "name": "个人中心·我的订单",
+      "ok": true,
+      "detail": "/orders"
+    },
+    {
+      "name": "个人中心·用餐帮助",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "移动TabBar·点餐",
+      "ok": true,
+      "detail": "active=点餐 toast=0 url=/mobile"
+    },
+    {
+      "name": "移动TabBar·餐车",
+      "ok": true,
+      "detail": "active=点餐 toast=1 url=/mobile"
+    },
+    {
+      "name": "移动TabBar·订单",
+      "ok": true,
+      "detail": "active=订单 toast=0 url=/mobile"
+    },
+    {
+      "name": "移动TabBar·我的",
+      "ok": true,
+      "detail": "active= toast=0 url=/center/overview"
+    },
+    {
+      "name": "移动金刚区·立即点餐",
+      "ok": true,
+      "detail": "cards 6->6 meal 午餐->午餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·我的订单",
+      "ok": true,
+      "detail": "cards 6->6 meal 午餐->午餐 nav=订单"
+    },
+    {
+      "name": "移动金刚区·早餐",
+      "ok": true,
+      "detail": "cards 6->3 meal 午餐->早餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·午餐",
+      "ok": true,
+      "detail": "cards 6->6 meal 午餐->午餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·晚餐",
+      "ok": true,
+      "detail": "cards 6->2 meal 午餐->晚餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·轻食素食",
+      "ok": true,
+      "detail": "cards 6->1 meal 午餐->午餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·招牌推荐",
+      "ok": true,
+      "detail": "cards 6->1 meal 午餐->午餐 nav=点餐"
+    },
+    {
+      "name": "移动金刚区·我的餐车",
+      "ok": true,
+      "detail": "cards 6->6 meal 午餐->午餐 nav=点餐"
+    },
+    {
+      "name": "移动·餐次切换",
+      "ok": true,
+      "detail": "午餐->早餐"
+    },
+    {
+      "name": "移动·餐次同步购物车",
+      "ok": true,
+      "detail": "cart.meal=breakfast"
+    },
+    {
+      "name": "移动·分类切换",
+      "ok": true,
+      "detail": "全部->面食米线"
+    },
+    {
+      "name": "移动·stepper加菜",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "移动·结算弹窗",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "移动·确认下单",
+      "ok": true,
+      "detail": "nav=订单"
+    }
+  ]
+}

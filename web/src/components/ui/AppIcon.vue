@@ -27,7 +27,30 @@ import {
   CircleUserRound,
   Sun,
   Moon,
+  Flame,
+  Sparkles,
+  BadgeCheck,
+  Ticket,
+  CircleCheck,
+  Ban,
+  Wallet,
+  ChefHat,
+  Timer,
+  ReceiptText,
+  CircleDollarSign,
+  Undo2,
+  Plus,
+  Minus,
+  Search,
+  ShoppingCart,
+  X,
+  ArrowLeft,
+  Star,
+  Trash2,
+  Info,
+  PackageCheck,
 } from 'lucide-vue-next'
+
 const icons = {
   ArrowRight,
   ArrowUpRight,
@@ -56,7 +79,30 @@ const icons = {
   CircleUserRound,
   Sun,
   Moon,
+  Flame,
+  Sparkles,
+  BadgeCheck,
+  Ticket,
+  CircleCheck,
+  Ban,
+  Wallet,
+  ChefHat,
+  Timer,
+  ReceiptText,
+  CircleDollarSign,
+  Undo2,
+  Plus,
+  Minus,
+  Search,
+  ShoppingCart,
+  X,
+  ArrowLeft,
+  Star,
+  Trash2,
+  Info,
+  PackageCheck,
 }
+
 export default {
   props: {
     name: { type: String, default: 'Leaf' },
@@ -70,6 +116,7 @@ export default {
   },
 }
 </script>
+
 <template>
   <component
     :is="icon"

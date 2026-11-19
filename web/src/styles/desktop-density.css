@@ -1,0 +1,102 @@
+/* ==========================================================
+   桌面端阅读密度增强层
+   只在 ≥1024px 的桌面视口生效；Vant 手机预览页(.mobile-order-page)
+   不在选择器内，移动端字号与触控密度完全不受影响。
+   ========================================================== */
+
+@media (min-width: 1024px) {
+  .menu-page,
+  .orders-page,
+  .admin-page,
+  .dash-page,
+  .cart-page,
+  .dish-detail-page,
+  .order-detail-page,
+  .account-app {
+    --fs-11: 12px;
+    --fs-12: 13px;
+    --fs-13: 14px;
+    --fs-14: 15px;
+    --fs-15: 16px;
+    --fs-16: 17px;
+    --fs-18: 20px;
+    --fs-20: 22px;
+    --fs-24: 28px;
+    --fs-30: 34px;
+    --fs-36: 40px;
+  }
+
+  .orders-page .el-button--primary:not(.is-plain):not(.is-text),
+  .admin-page .el-button--primary:not(.is-plain):not(.is-text) {
+    --el-button-text-color: var(--white);
+    --el-button-hover-text-color: var(--white);
+    --el-button-active-text-color: var(--white);
+  }
+
+  .menu-page .section-panel__header h2,
+  .orders-page .section-panel__header h2,
+  .admin-page .section-panel__header h2,
+  .dash-page .section-panel__header h2,
+  .account-app .section-panel__header h2 {
+    font-size: 18px;
+  }
+  .menu-page .section-panel__header p,
+  .orders-page .section-panel__header p,
+  .admin-page .section-panel__header p,
+  .dash-page .section-panel__header p,
+  .account-app .section-panel__header p {
+    font-size: 13px;
+  }
+
+  .menu-page .order-section-head h2,
+  .orders-page .order-section-head h2,
+  .admin-page .order-section-head h2,
+  .dash-page .order-section-head h2 {
+    font-size: var(--fs-30);
+  }
+
+  .menu-page .order-section-head p,
+  .orders-page .order-section-head p,
+  .admin-page .order-section-head p,
+  .dash-page .order-section-head p {
+    font-size: var(--fs-14);
+  }
+
+  .menu-page .category-row .category-chip,
+  .orders-page .filter-row .category-chip {
+    font-size: var(--fs-14);
+    padding: 10px 20px;
+  }
+
+  .menu-page .quick-entries .quick-entries__title {
+    font-size: var(--fs-16);
+  }
+  .menu-page .quick-entries .quick-entries__hint {
+    font-size: var(--fs-13);
+  }
+  .menu-page .quick-entries .qe-item__label {
+    font-size: var(--fs-13);
+  }
+
+  .menu-page .food-card .food-name {
+    font-size: var(--fs-16);
+  }
+  .menu-page .food-card .food-desc {
+    font-size: var(--fs-13);
+  }
+
+  .orders-page .order-row__desc {
+    font-size: var(--fs-14);
+  }
+  .orders-page .order-row__id strong {
+    font-size: var(--fs-15);
+  }
+}
+
+@media (min-width: 1280px) {
+  /* 大屏从 4 列改 3 列：菜品图更大、信息更容易读，页面不再碎片化 */
+  .menu-page .dish-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+}

@@ -9,7 +9,11 @@ export function safeDestination(value) {
     return DEFAULT_DESTINATION
   }
   if (/[\\\u0000-\u001f]/.test(decoded) || decoded.startsWith('//')) return DEFAULT_DESTINATION
-  if (!/^\/(?:center(?:\/|\?|$)|menu(?:\?|$)|orders(?:\?|$)|admin\/dishes(?:\?|$))/.test(decoded))
+  if (
+    !/^\/(?:center(?:\/|\?|$)|menu(?:\?|$)|cart(?:\?|$)|dish\/|orders(?:\?|$)|order\/|mobile(?:\?|$)|admin\/(?:overview|dishes)(?:\?|$))/.test(
+      decoded,
+    )
+  )
     return DEFAULT_DESTINATION
   if (decoded.split('?')[0].split('/').includes('..')) return DEFAULT_DESTINATION
   return value

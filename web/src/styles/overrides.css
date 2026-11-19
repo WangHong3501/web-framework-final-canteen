@@ -1,0 +1,276 @@
+/* ==========================================================
+   组件库覆盖层（3-overrides）
+   Element Plus 与 Vant 的全部原生差异在此统一修正，
+   业务页面不允许再写组件库补丁样式。
+   ========================================================== */
+
+/* ---------------- Element Plus · 按钮 ---------------- */
+.el-button {
+  --el-button-bg-color: var(--white);
+  --el-button-border-color: var(--line);
+  --el-button-text-color: var(--ink);
+  --el-button-hover-bg-color: var(--brand-50);
+  --el-button-hover-border-color: var(--brand-300);
+  --el-button-hover-text-color: var(--forest);
+  --el-button-active-bg-color: var(--brand-100);
+  --el-button-active-border-color: var(--brand-400);
+  --el-button-disabled-bg-color: var(--gray-100);
+  --el-button-disabled-border-color: var(--gray-200);
+  --el-button-disabled-text-color: var(--gray-400);
+  border-radius: var(--radius-md);
+  font-weight: var(--fw-semibold);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.el-button:hover:not(.is-disabled) {
+  transform: translateY(-1px);
+}
+
+.el-button:active:not(.is-disabled) {
+  transform: translateY(0);
+}
+
+.el-button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.el-button.is-disabled,
+.el-button.is-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--forest);
+  --el-button-border-color: var(--forest);
+  --el-button-hover-bg-color: var(--forest-hover);
+  --el-button-hover-border-color: var(--forest-hover);
+  --el-button-active-bg-color: #183d29;
+  --el-button-active-border-color: #183d29;
+  --el-button-disabled-bg-color: var(--brand-200);
+  --el-button-disabled-border-color: var(--brand-200);
+  --el-button-disabled-text-color: #ffffff;
+}
+
+.el-button.is-loading {
+  opacity: 0.82;
+  cursor: progress;
+}
+
+.el-button.is-round {
+  border-radius: var(--radius-pill);
+}
+
+/* ---------------- Element Plus · 输入类 ---------------- */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: var(--radius-md);
+  background-color: var(--white);
+  box-shadow: 0 0 0 1px var(--line) inset;
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus {
+  box-shadow:
+    0 0 0 1px var(--forest) inset,
+    0 0 0 3px rgba(35, 75, 54, 0.08);
+}
+
+.el-input.is-disabled .el-input__wrapper,
+.el-select.is-disabled .el-select__wrapper {
+  background-color: var(--gray-100);
+  box-shadow: 0 0 0 1px var(--gray-200) inset;
+  color: var(--gray-400);
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: var(--gray-400);
+}
+
+.el-form-item.is-error .el-input__wrapper,
+.el-form-item.is-error .el-select__wrapper,
+.el-form-item.is-error .el-textarea__inner {
+  box-shadow: 0 0 0 1px var(--danger-600) inset;
+}
+
+.el-form-item.is-error .el-input__wrapper.is-focus {
+  box-shadow:
+    0 0 0 1px var(--danger-600) inset,
+    0 0 0 3px rgba(166, 60, 52, 0.1);
+}
+
+.el-form-item__error {
+  font-size: var(--fs-12);
+  color: var(--danger-600);
+  padding-top: var(--space-1);
+}
+
+/* ---------------- Element Plus · 弹层 ---------------- */
+.el-overlay {
+  background-color: rgba(24, 40, 30, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.el-dialog {
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-4);
+  padding: var(--space-6);
+}
+
+.el-message {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+  border-color: var(--line);
+  min-width: 240px;
+}
+
+.el-message-box {
+  border-radius: 18px;
+  box-shadow: var(--shadow-4);
+}
+
+.el-message--success {
+  background: var(--success-100);
+  border-color: var(--success-line);
+}
+.el-message--warning {
+  background: var(--warning-100);
+  border-color: var(--warning-line);
+}
+.el-message--error {
+  background: var(--danger-100);
+  border-color: var(--danger-line);
+}
+
+/* ---------------- Element Plus · 表单控件 ---------------- */
+.el-checkbox,
+.el-radio {
+  --el-checkbox-checked-bg-color: var(--forest);
+  --el-checkbox-checked-input-border-color: var(--forest);
+  --el-radio-input-border-color-hover: var(--forest);
+  --el-color-primary: var(--forest);
+}
+
+.el-switch {
+  --el-switch-on-color: var(--forest);
+  --el-switch-off-color: var(--gray-300);
+}
+
+.el-tag {
+  border-radius: var(--radius-xs);
+  font-weight: var(--fw-medium);
+  border-color: transparent;
+  padding: 0 var(--space-2);
+}
+
+.el-tag--success {
+  color: var(--success-600);
+  background: var(--success-100);
+}
+.el-tag--warning {
+  color: var(--warning-600);
+  background: var(--warning-100);
+}
+.el-tag--danger {
+  color: var(--danger-600);
+  background: var(--danger-100);
+}
+.el-tag--info {
+  color: var(--info-600);
+  background: var(--info-100);
+}
+
+/* ---------------- Element Plus · 菜单 ---------------- */
+.el-menu {
+  border-right: 0;
+  background: transparent;
+}
+
+.el-menu-item {
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.el-menu-item:hover {
+  background-color: var(--brand-50);
+  color: var(--forest);
+}
+
+.el-menu-item.is-active {
+  background-color: var(--brand-100);
+  color: var(--forest);
+  font-weight: var(--fw-semibold);
+}
+
+/* ---------------- Element Plus · 表格 / 骨架 ---------------- */
+.el-skeleton__item {
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 37%, var(--gray-100) 63%);
+  border-radius: var(--radius-sm);
+}
+
+.el-table {
+  --el-table-border-color: var(--line);
+  --el-table-header-bg-color: var(--gray-50);
+  --el-table-header-text-color: var(--gray-700);
+  --el-table-row-hover-bg-color: var(--brand-50);
+  --el-table-text-color: var(--gray-600);
+  font-size: var(--fs-13);
+}
+
+.el-table th.el-table__cell {
+  font-weight: var(--fw-semibold);
+}
+
+/* ---------------- Vant · 移动端（组员接入后自动生效） ---------------- */
+:root {
+  --van-toast-border-radius: var(--radius-lg);
+  --van-overlay-background: rgba(24, 40, 30, 0.42);
+  --van-field-label-width: 5.4em;
+}
+
+.van-button {
+  font-weight: var(--fw-semibold);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.van-button--primary {
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.van-button--disabled {
+  opacity: 0.55;
+}
+
+.van-tag {
+  border-radius: var(--radius-xs);
+  font-weight: var(--fw-medium);
+  padding: 0 var(--space-2);
+}
+
+.van-toast {
+  border-radius: var(--radius-lg);
+}
+
+.van-dialog {
+  border-radius: var(--radius-xl);
+}
+
+.van-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+}

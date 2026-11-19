@@ -32,11 +32,11 @@
   color: var(--muted);
   position: relative;
 }
-.account-app .top-nav a.top-nav__active {
+.account-app .top-nav a.router-link-active:not(.top-nav__link--muted) {
   color: var(--forest);
   font-weight: 650;
 }
-.account-app .top-nav__active::after {
+.account-app .top-nav a.router-link-active:not(.top-nav__link--muted)::after {
   position: absolute;
   content: '';
   height: 3px;
@@ -45,6 +45,9 @@
   right: 10px;
   bottom: 0;
   border-radius: 3px 3px 0 0;
+}
+.account-app .top-nav .top-nav__link--muted {
+  color: var(--gray-400);
 }
 .account-app .header-identity {
   margin-left: auto;

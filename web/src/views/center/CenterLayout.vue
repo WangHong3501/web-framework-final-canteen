@@ -11,7 +11,7 @@ export default {
   data() {
     return {
       helpOpen: false,
-      links: [
+      baseLinks: [
         { path: '/center/overview', label: '食光概览', icon: 'LayoutDashboard' },
         { path: '/center/profile', label: '个人资料', icon: 'UserRound' },
         { path: '/center/preferences', label: '用餐偏好', icon: 'SlidersHorizontal' },
@@ -21,6 +21,15 @@ export default {
   },
   computed: {
     ...mapStores(useUserStore),
+    links() {
+      if (!this.userStore.isMerchant) return this.baseLinks
+      return [
+        this.baseLinks[0],
+        { path: '/admin/overview', label: '经营概览', icon: 'LayoutDashboard' },
+        { path: '/admin/dishes', label: '档口管理', icon: 'Store' },
+        ...this.baseLinks.slice(1),
+      ]
+    },
     user() {
       return this.userStore.user || {}
     },
@@ -59,7 +68,11 @@ export default {
           ><BrandMark compact
         /></router-link>
         <nav class="top-nav" aria-label="主导航">
-          <router-link to="/center/overview" class="top-nav__active">我的食光</router-link
+          <router-link to="/menu">校园菜单</router-link
+          ><router-link to="/orders">{{
+            userStore.isMerchant ? '订单工作台' : '我的订单'
+          }}</router-link
+          ><router-link to="/center/overview" class="top-nav__link--muted">我的食光</router-link
           ><button type="button" @click="helpOpen = true">用餐帮助</button>
         </nav>
         <div class="header-identity">

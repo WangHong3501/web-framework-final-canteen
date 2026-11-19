@@ -139,15 +139,17 @@ git push -u origin docs/32605150622-contribution
 | 优先级 | 功能 | 内容 | 当前状态 |
 | --- | --- | --- | --- |
 | 必做 F1 | 登录与守卫 | 学生/商家登录、角色校验、嵌套个人中心、会话恢复与退出 | 已实现，可本地验收 |
-| 必做 F2 | 菜单浏览 | 按档口/分类切换菜单、动态详情 | 翟毅待开发 |
-| 必做 F3 | 点餐车 | 加减/清空、合计与持久化 | 李岷鳌待开发 |
-| 必做 F4 | 提交订单 | 生成订单、重复提交防护、金额计算 | 李岷鳌待开发 |
-| 必做 F5 | 订单列表与状态 | 本人订单、待取餐到已完成 | 李岷鳌待开发 |
-| 期望 E6 | 档口管理端 | 菜品管理归翟毅，订单管理归李岷鳌 | 待开发 |
-| 期望 E7 | 菜品搜索 | 关键词搜索及空态 | 翟毅待开发 |
-| 可选 O8 | 评价打星 | 评价与星级 | 必做稳定后再分配 |
+| 必做 F2 | 菜单浏览 | 按餐次/分类切换、搜索、动态详情 | 已实现（`/menu`、`/dish/:id`） |
+| 必做 F3 | 点餐车 | 加减/清空、合计与持久化 | 已实现（`stores/cart.js`，persist 持久化） |
+| 必做 F4 | 提交订单 | 生成订单、服务端核价、重复提交防护 | 已实现（`/cart`，POST 下单） |
+| 必做 F5 | 订单列表与状态 | 本人订单、待取餐到已完成流转 | 已实现（`/orders`、`/order/:id`） |
+| 期望 E6 | 档口管理端 | 菜品 Table 增删改、上下架 | 已实现（`/admin/dishes`，Element Plus Dialog） |
+| 期望 E7 | 菜品搜索 | 关键词搜索及空态 | 已实现（双端共用 `useMenu`） |
+| 加分项 | Vant 移动端点餐 | 餐次/分类/步进器/提交栏/下单 Dialog，手机壳预览 | 已实现（`/mobile`，Vant 按需加载） |
 
-现有账户路由为 `/login`、`/center/overview`、`/center/profile`、`/center/preferences`、`/center/security`。业务路由预约为 `/menu`、`/dish/:id`、`/cart`、`/orders`、`/admin/dishes`，由对应成员接入；个人中心以后挂载订单时复用李岷鳌的订单组件，不再另写一套订单逻辑。
+现有路由：账户 `/login`、`/center/*`；业务 `/menu`、`/dish/:id`、`/cart`、`/orders`、`/order/:id`、`/admin/dishes`、`/mobile`。全部懒加载，业务路由受全局守卫保护，`/admin/dishes` 仅商家可访问。
+
+**双端统一（Vant 移动端 + Element Plus 桌面端）落地方法见 [双端界面统一方案](./docs/dual-ui-unification.md)**：同一份 `tokens.css` 令牌作唯一真相源，把 `--el-*` 与 `--van-*` 变量同时映射到品牌的色阶/圆角/字号/动效；业务语义（售罄、招牌、辣度、状态流）封装成共享组件与 `useMenu` 逻辑，两端各自用 Element Plus 与 Vant 渲染；Vant 组件在 `MobileOrderView` 内按需引入，配合路由懒加载，桌面端产物不含 Vant 代码。
 
 技术方案沿用课程口径：Vue 3 选项式 API、Vite、npm、Vue Router hash 路由；Element Plus 承载主界面，Vant 承载移动端页面；Axios 请求本地 `json-server`（3001 端口）；Pinia 至少包含用户与点餐车两个仓库，并配置持久化。后续设计须对照题目册 T1—T7，覆盖组件 props / emit / 插槽、computed / watch、动态与嵌套路由、守卫与懒加载、GET / POST / PUT / DELETE、loading / catch，以及构建和部署验证。
 
@@ -198,6 +200,7 @@ Windows 浏览器验收使用已安装的 Chrome；其他系统在首次运行 P
 - [账户接口约定](./docs/api-contract.md)：身份、模型、错误响应与跨模块接口。
 - [页面 A 验收记录](./docs/page-a-verification.md)：实际测试结果、运行截图、构建指标与未完成项。
 - [王鸿的贡献记录](./docs/contributions/32605150621-王鸿.md)：本阶段实际产出及答辩讲解入口。
+- [商家经营概览](./docs/merchant-dashboard.md)：商家端经营视角、指标口径、文件清单、验收记录与答辩话术。
 
 ## 后续里程碑
 

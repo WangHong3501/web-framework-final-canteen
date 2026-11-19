@@ -30,7 +30,7 @@ a {
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid #6f9b55;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 4px;
 }
 svg {
