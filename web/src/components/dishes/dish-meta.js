@@ -1,0 +1,134 @@
+export const DISH_CATEGORIES = ['家常小炒', '面食米线', '轻食蔬菜', '风味套餐']
+
+export const DISH_MEALS = [
+  { key: 'all', label: '全部餐次', icon: 'Utensils' },
+  { key: 'breakfast', label: '早餐', icon: 'Sun' },
+  { key: 'lunch', label: '午餐', icon: 'Soup' },
+  { key: 'dinner', label: '晚餐', icon: 'Moon' },
+  { key: 'night', label: '夜宵', icon: 'Sparkles' },
+]
+
+export const DISH_MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'night']
+
+export const DISH_STATUS_OPTIONS = [
+  { value: 'success', label: '可点餐' },
+  { value: 'warning', label: '余量少' },
+  { value: 'danger', label: '已售罄' },
+]
+
+export const DISH_SPICE_OPTIONS = [
+  { value: 0, label: '不辣' },
+  { value: 1, label: '微辣' },
+  { value: 2, label: '中辣' },
+  { value: 3, label: '特辣' },
+]
+
+export const DISH_IMAGE_OPTIONS = [
+  { value: '/images/hongshaorou.jpg', label: '红烧小炒实景' },
+  { value: '/images/jilifan.jpg', label: '香煎风味实景' },
+  { value: '/images/fresh-bowl.jpg', label: '轻食鲜蔬实景' },
+]
+
+export const DISH_BADGE_OPTIONS = ['招牌', '新品']
+
+const SPICE_MAP = Object.fromEntries(DISH_SPICE_OPTIONS.map((item) => [item.value, item.label]))
+const STATUS_MAP = Object.fromEntries(DISH_STATUS_OPTIONS.map((item) => [item.value, item.label]))
+const MEAL_MAP = {
+  breakfast: '早餐',
+  lunch: '午餐',
+  dinner: '晚餐',
+  night: '夜宵',
+}
+
+export function isValidDishId(id) {
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id.trim())
+}
+
+export function isDishSoldOut(dish) {
+  return dish?.status === 'danger' || dish?.soldOut === true || dish?.available === false
+}
+
+export function resolveDishImage(src, baseUrl = '/') {
+  const base = String(baseUrl || '/').endsWith('/') ? String(baseUrl || '/') : `${baseUrl}/`
+  const value = String(src || '').trim()
+  if (!value) return `${base}images/fresh-bowl.jpg`
+  if (/^https?:\/\//.test(value)) return value
+  if (value.startsWith('/')) return `${base}${value.slice(1)}`
+  return `${base}${value}`
+}
+
+export function toCents(yuan) {
+  const num = Number(yuan)
+  return Number.isFinite(num) ? Math.round(num * 100) : 0
+}
+
+export function formatYuanFromCents(cents) {
+  const safe = Number.isFinite(Number(cents)) ? Math.round(Number(cents)) : 0
+  return (safe / 100).toFixed(2)
+}
+
+export function formatPrice(yuan) {
+  return formatYuanFromCents(toCents(yuan))
+}
+
+export function spiceLabel(level) {
+  const key = Number(level)
+  return SPICE_MAP[key] || '不辣'
+}
+
+export function mealLabel(meal) {
+  return MEAL_MAP[meal] || '午餐'
+}
+
+export function statusLabel(status) {
+  return STATUS_MAP[status] || '可点餐'
+}
+
+export function filterDishList(
+  dishes = [],
+  { meal = 'all', stallId = 'all', category = '全部', keyword = '', status = 'all' } = {},
+) {
+  const list = Array.isArray(dishes) ? dishes : []
+  const term = String(keyword || '')
+    .trim()
+    .toLowerCase()
+  return list.filter((dish) => {
+    if (meal && meal !== 'all' && dish.meal !== meal) return false
+    if (stallId && stallId !== 'all' && String(dish.stallId) !== String(stallId)) return false
+    if (category && category !== '全部' && dish.category !== category) return false
+    if (status && status !== 'all' && dish.status !== status) return false
+    if (!term) return true
+    return [dish.name, dish.desc, dish.stall, dish.category].some((value) =>
+      String(value || '')
+        .toLowerCase()
+        .includes(term),
+    )
+  })
+}
+
+export function buildDishPayload(form = {}) {
+  const priceCents = toCents(form.price)
+  const payload = {
+    name: String(form.name || '').trim(),
+    price: priceCents / 100,
+    image: String(form.image || '').trim() || '/images/fresh-bowl.jpg',
+    desc: String(form.desc || '').trim(),
+    category: DISH_CATEGORIES.includes(form.category) ? form.category : DISH_CATEGORIES[0],
+    meal: DISH_MEAL_KEYS.includes(form.meal) ? form.meal : 'lunch',
+    status: STATUS_MAP[form.status] ? form.status : 'success',
+    badges: Array.isArray(form.badges)
+      ? [...new Set(form.badges.map((b) => String(b).trim()).filter(Boolean))].slice(0, 3)
+      : [],
+    spice: Number.isInteger(Number(form.spice)) ? Math.min(3, Math.max(0, Number(form.spice))) : 0,
+  }
+  const hasOriginal =
+    form.originalPrice !== '' &&
+    form.originalPrice !== null &&
+    form.originalPrice !== undefined &&
+    Number.isFinite(Number(form.originalPrice)) &&
+    Number(form.originalPrice) > 0
+  if (hasOriginal) {
+    payload.originalPrice = toCents(form.originalPrice) / 100
+  }
+  return payload
+}
