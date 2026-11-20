@@ -1,118 +1,310 @@
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+<script>
+import '@/styles/order.css'
+import '@/components/dishes/dishes.css'
 import { ElMessage } from 'element-plus'
-import { catalogApi } from '@/api/catalog'
+import { mapStores } from 'pinia'
+import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useCartStore } from '@/stores/cart'
-import { isSoldOut } from '@/shared/useMenu'
+import { useUserStore } from '@/stores/user'
+import DishTopBar from '@/components/dishes/DishTopBar.vue'
+import DishRelatedGrid from '@/components/dishes/DishRelatedGrid.vue'
 import StatusTag from '@/components/ui/StatusTag.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import {
+  formatYuanFromCents,
+  isDishSoldOut,
+  isValidDishId,
+  mealLabel,
+  resolveDishImage,
+  spiceLabel,
+  toCents,
+} from '@/components/dishes/dish-meta'
 
-const route = useRoute()
-const router = useRouter()
-const cart = useCartStore()
-const dish = ref(null)
-const loading = ref(true)
-const errorMsg = ref('')
-const qty = ref(1)
-
-const soldOut = computed(() => (dish.value ? isSoldOut(dish.value) : false))
-const SPICE_TEXT = { 0: '不辣', 1: '微辣', 2: '中辣', 3: '特辣' }
-
-async function load() {
-  loading.value = true
-  errorMsg.value = ''
-  try {
-    dish.value = await catalogApi.dish(route.params.id)
-  } catch (error) {
-    errorMsg.value = requestMessage(error, '菜品加载失败。')
-  } finally {
-    loading.value = false
-  }
+export default {
+  components: {
+    DishTopBar,
+    DishRelatedGrid,
+    StatusTag,
+    PriceTag,
+    EmptyState,
+    AppIcon,
+  },
+  data() {
+    return {
+      assetBase: import.meta.env.BASE_URL,
+      dish: null,
+      stalls: [],
+      allDishes: [],
+      loading: true,
+      errorMsg: '',
+      qty: 1,
+    }
+  },
+  computed: {
+    ...mapStores(useCartStore, useUserStore),
+    dishId() {
+      return String(this.$route.params.id || '')
+    },
+    validId() {
+      return isValidDishId(this.dishId)
+    },
+    soldOut() {
+      return this.dish ? isDishSoldOut(this.dish) : false
+    },
+    imageSrc() {
+      return this.dish ? resolveDishImage(this.dish.image, this.assetBase) : ''
+    },
+    stallInfo() {
+      if (!this.dish) return null
+      return this.stalls.find((item) => String(item.id) === String(this.dish.stallId)) || null
+    },
+    mealText() {
+      return this.dish ? mealLabel(this.dish.meal) : ''
+    },
+    spiceText() {
+      return this.dish ? spiceLabel(this.dish.spice) : '不辣'
+    },
+    subtotalText() {
+      if (!this.dish) return '0.00'
+      return formatYuanFromCents(toCents(this.dish.price) * this.qty)
+    },
+    currentCartQty() {
+      return this.cartStore.items.find((item) => item.dishId === this.dishId)?.qty || 0
+    },
+    relatedDishes() {
+      if (!this.dish) return []
+      return this.allDishes
+        .filter(
+          (item) => String(item.stallId) === String(this.dish.stallId) && item.id !== this.dish.id,
+        )
+        .slice(0, 3)
+    },
+    canManageDish() {
+      return Boolean(
+        this.userStore.isMerchant &&
+        this.dish &&
+        String(this.userStore.user?.stallId) === String(this.dish.stallId),
+      )
+    },
+  },
+  watch: {
+    '$route.params.id'() {
+      this.qty = 1
+      this.load()
+    },
+  },
+  mounted() {
+    this.load()
+  },
+  methods: {
+    async load() {
+      if (!this.validId) {
+        this.loading = false
+        this.dish = null
+        this.errorMsg = '菜品编号格式不正确，请返回校园菜单重新选择。'
+        return
+      }
+      this.loading = true
+      this.errorMsg = ''
+      this.dish = null
+      try {
+        const [dish, stalls, allDishes] = await Promise.all([
+          dishesApi.get(this.dishId),
+          dishesApi.stalls(),
+          dishesApi.list(),
+        ])
+        this.dish = dish
+        this.stalls = Array.isArray(stalls) ? stalls : []
+        this.allDishes = Array.isArray(allDishes) ? allDishes : []
+      } catch (error) {
+        this.errorMsg = requestMessage(error, '菜品加载失败，请稍后重试。')
+      } finally {
+        this.loading = false
+      }
+    },
+    stepQty(delta) {
+      const next = this.qty + delta
+      if (next < 1) this.qty = 1
+      else if (next > 20) this.qty = 20
+      else this.qty = next
+    },
+    addToCart() {
+      if (!this.dish || this.soldOut) return
+      this.cartStore.add(this.dish, this.qty)
+      ElMessage.success(`已加入 ${this.qty} 份「${this.dish.name}」`)
+    },
+    goRelatedDish(id) {
+      this.$router.push({ name: 'dish-detail', params: { id } })
+    },
+  },
 }
-
-function addToCart() {
-  if (!dish.value || soldOut.value) return
-  cart.add(dish.value, qty.value)
-  ElMessage.success(`已加入 ${qty.value} 份「${dish.value.name}」`)
-}
-
-onMounted(load)
 </script>
 
 <template>
-  <div class="dish-detail-page">
-    <button type="button" class="back-link" @click="$router.back()">
-      <AppIcon name="ArrowLeft" :size="17" /> 返回
-    </button>
+  <div class="dish-shell">
+    <DishTopBar active="dish" />
 
-    <div v-if="loading" class="loading-block">正在加载菜品…</div>
-    <div v-else-if="errorMsg || !dish" class="error-block" role="alert">
-      <AppIcon name="CircleAlert" :size="22" />
-      <p>{{ errorMsg || '未找到这道菜' }}</p>
-      <el-button @click="load">重试</el-button>
-    </div>
-
-    <div v-else class="detail-layout">
-      <div class="detail-media">
-        <img :src="dish.image" :alt="dish.name" />
-        <div v-if="soldOut" class="detail-media__mask">
-          <AppIcon name="Ban" :size="28" /> 今日已售罄
-        </div>
-      </div>
-
-      <div class="detail-info">
-        <div class="detail-badges">
-          <StatusTag v-if="dish.badges?.includes('招牌')" type="brand" text="招牌" />
-          <StatusTag v-if="dish.badges?.includes('新品')" type="new" text="新品" />
-          <StatusTag v-if="dish.spice" type="hot" :text="SPICE_TEXT[dish.spice]" />
-          <StatusTag v-for="tag in dish.tags" :key="tag.text" :type="tag.type" :text="tag.text" />
+    <main id="dish-main-content" class="dish-main">
+      <div class="dish-detail-page">
+        <div class="detail-topbar">
+          <button type="button" class="back-link" @click="$router.push('/menu')">
+            <AppIcon name="ArrowLeft" :size="17" /> 返回校园菜单
+          </button>
+          <span class="detail-breadcrumb">
+            校园菜单 / {{ dish ? `${dish.stall} / ${dish.name}` : '菜品详情' }}
+          </span>
         </div>
 
-        <h1>{{ dish.name }}</h1>
-        <p class="detail-desc">{{ dish.desc }}</p>
-
-        <div class="detail-stats">
-          <span><AppIcon name="Star" :size="15" /> {{ dish.rating }} 分</span>
-          <span><AppIcon name="ShoppingBag" :size="15" /> 已售 {{ dish.sales }}</span>
-          <span><AppIcon name="Store" :size="15" /> {{ dish.stall }}</span>
+        <div v-if="loading" class="loading-block">
+          <el-skeleton :rows="6" animated />
         </div>
 
-        <div class="detail-meta">
-          <div><span>菜品分类</span><strong>{{ dish.category }}</strong></div>
-          <div><span>供应餐次</span><strong>{{ dish.meal === 'lunch' ? '午餐' : dish.meal === 'breakfast' ? '早餐' : dish.meal === 'dinner' ? '晚餐' : '夜宵' }}</strong></div>
-          <div><span>辣度</span><strong>{{ SPICE_TEXT[dish.spice] || '不辣' }}</strong></div>
-        </div>
+        <EmptyState
+          v-else-if="errorMsg || !dish"
+          :title="errorMsg || '未找到这道菜品'"
+          detail="你可以返回校园菜单浏览其他档口和热销菜品。"
+          :action-label="validId ? '重新加载' : '返回校园菜单'"
+          icon="Search"
+          @action="validId ? load() : $router.push('/menu')"
+        />
 
-        <div class="detail-purchase">
-          <PriceTag :value="dish.price" :original="dish.originalPrice" size="lg" />
-          <div class="detail-purchase__right">
-            <div class="qty-stepper qty-stepper--lg">
-              <button class="is-minus" type="button" :disabled="qty <= 1" @click="qty = Math.max(1, qty - 1)">
-                <AppIcon name="Minus" :size="16" />
-              </button>
-              <strong>{{ qty }}</strong>
-              <button type="button" :disabled="qty >= 20" @click="qty = Math.min(20, qty + 1)">
-                <AppIcon name="Plus" :size="16" />
-              </button>
+        <template v-else>
+          <div class="detail-layout">
+            <div class="detail-media">
+              <img :src="imageSrc" :alt="dish.name" />
+              <div v-if="soldOut" class="detail-media__mask">
+                <AppIcon name="Ban" :size="28" />
+                <span>今日已售罄</span>
+              </div>
             </div>
-            <el-button type="primary" round :disabled="soldOut" @click="addToCart">
-              <AppIcon name="ShoppingCart" :size="17" /> {{ soldOut ? '今日售罄' : '加入餐车' }}
-            </el-button>
+
+            <div class="detail-info">
+              <div class="detail-badges">
+                <StatusTag v-if="dish.badges?.includes('招牌')" type="brand" text="招牌" />
+                <StatusTag v-if="dish.badges?.includes('新品')" type="new" text="新品" />
+                <StatusTag v-if="dish.spice" type="hot" :text="spiceText" />
+                <StatusTag
+                  v-for="tag in dish.tags"
+                  :key="tag.text"
+                  :type="tag.type"
+                  :text="tag.text"
+                />
+                <StatusTag v-if="soldOut" type="sold" text="已售罄" />
+              </div>
+
+              <h1>{{ dish.name }}</h1>
+              <p class="detail-desc">{{ dish.desc || '校园食堂每日新鲜现做，到窗口即可取餐。' }}</p>
+
+              <div class="detail-stats">
+                <span><AppIcon name="Star" :size="15" /> {{ dish.rating ?? 0 }} 分</span>
+                <span><AppIcon name="ShoppingBag" :size="15" /> 已售 {{ dish.sales ?? 0 }}</span>
+                <span>
+                  <AppIcon name="Store" :size="15" />
+                  {{ dish.stall }}
+                  <template v-if="stallInfo?.window"> · {{ stallInfo.window }}</template>
+                </span>
+              </div>
+
+              <div class="detail-meta">
+                <div>
+                  <span>菜品分类</span><strong>{{ dish.category }}</strong>
+                </div>
+                <div>
+                  <span>供应餐次</span><strong>{{ mealText }}</strong>
+                </div>
+                <div>
+                  <span>参考辣度</span><strong>{{ spiceText }}</strong>
+                </div>
+              </div>
+
+              <div class="detail-purchase">
+                <div class="detail-price-box">
+                  <PriceTag :value="dish.price" :original="dish.originalPrice" size="lg" />
+                  <small class="detail-subtotal" data-testid="detail-subtotal">
+                    小计 ¥{{ subtotalText }}
+                  </small>
+                </div>
+
+                <div class="detail-purchase__right">
+                  <div class="qty-stepper qty-stepper--lg" role="group" aria-label="选择点餐份数">
+                    <button
+                      class="is-minus"
+                      type="button"
+                      aria-label="减少份数"
+                      :disabled="soldOut || qty <= 1"
+                      @click="stepQty(-1)"
+                    >
+                      <AppIcon name="Minus" :size="16" />
+                    </button>
+                    <strong data-testid="detail-qty">{{ qty }}</strong>
+                    <button
+                      type="button"
+                      aria-label="增加份数"
+                      :disabled="soldOut || qty >= 20"
+                      @click="stepQty(1)"
+                    >
+                      <AppIcon name="Plus" :size="16" />
+                    </button>
+                  </div>
+                  <el-button
+                    type="primary"
+                    round
+                    :disabled="soldOut"
+                    data-testid="detail-add-btn"
+                    @click="addToCart"
+                  >
+                    <AppIcon name="ShoppingCart" :size="17" />
+                    {{ soldOut ? '今日售罄' : '加入餐车' }}
+                  </el-button>
+                </div>
+              </div>
+
+              <p v-if="currentCartQty > 0" class="detail-cart-hint" data-testid="detail-cart-hint">
+                点餐车中已有 {{ currentCartQty }} 份该菜品，
+                <router-link to="/cart">去点餐车结算</router-link>
+              </p>
+
+              <div v-if="canManageDish" class="detail-merchant-action">
+                <el-button plain @click="$router.push('/admin/dishes')">
+                  <AppIcon name="Store" :size="15" />在档口工作台编辑此菜品
+                </el-button>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <DishRelatedGrid :dishes="relatedDishes" :stall-name="dish.stall" @select="goRelatedDish">
+            <template #aside>
+              <router-link :to="`/menu?stall=${dish.stallId}`" class="text-button">
+                查看本档口全部菜品<AppIcon name="ChevronRight" :size="16" />
+              </router-link>
+            </template>
+          </DishRelatedGrid>
+        </template>
       </div>
-    </div>
+    </main>
+
+    <footer class="dish-footer">
+      <span>食光校园 · 菜品详情</span>
+      <span>最终核价与取餐窗口以订单页提交结果为准</span>
+    </footer>
   </div>
 </template>
 
 <style scoped>
 .dish-detail-page {
-  max-width: 1000px;
+  max-width: 1060px;
   margin: 0 auto;
   padding-bottom: var(--space-8);
+}
+.detail-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-2) 0 var(--space-5);
 }
 .back-link {
   display: inline-flex;
@@ -123,32 +315,34 @@ onMounted(load)
   color: var(--muted);
   font-size: var(--fs-13);
   padding: 0;
-  margin: var(--space-2) 0 var(--space-5);
 }
 .back-link:hover {
   color: var(--forest);
 }
-.loading-block,
-.error-block {
-  display: grid;
-  place-items: center;
-  gap: var(--space-3);
-  padding: var(--space-9);
+.detail-breadcrumb {
+  font-size: var(--fs-12);
   color: var(--muted);
 }
-.error-block {
-  color: var(--danger-600);
+.loading-block {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-7);
 }
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-7);
   align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
 }
 .detail-media {
   position: relative;
   aspect-ratio: 4 / 3;
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   overflow: hidden;
   background: var(--gray-100);
   box-shadow: var(--shadow-3);
@@ -191,6 +385,7 @@ onMounted(load)
 }
 .detail-stats {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-5);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--line);
@@ -215,7 +410,7 @@ onMounted(load)
 }
 .detail-meta span {
   font-size: var(--fs-12);
-  color: var(--gray-400);
+  color: var(--muted);
 }
 .detail-meta strong {
   font-size: var(--fs-14);
@@ -231,6 +426,15 @@ onMounted(load)
   padding-top: var(--space-4);
   border-top: 1px solid var(--line);
 }
+.detail-price-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-subtotal {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
 .detail-purchase__right {
   display: flex;
   align-items: center;
@@ -240,10 +444,24 @@ onMounted(load)
   width: 36px;
   height: 36px;
 }
+.detail-cart-hint {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-13);
+  color: var(--forest);
+}
+.detail-cart-hint a {
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.detail-merchant-action {
+  margin-top: var(--space-4);
+}
 @media (max-width: 900px) {
   .detail-layout {
     grid-template-columns: 1fr;
     gap: var(--space-5);
+    padding: var(--space-4);
   }
   .detail-info h1 {
     font-size: var(--fs-24);
