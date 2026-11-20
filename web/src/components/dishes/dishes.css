@@ -4,6 +4,13 @@
   display: flex;
   flex-direction: column;
   background: var(--canvas);
+  --sem-spice: #9e431f;
+  --sem-halal: #6e5f36;
+}
+
+.dish-shell .quick-entries .quick-entries__hint,
+.dish-shell .price-tag .price-tag__original {
+  color: var(--muted);
 }
 
 .dish-shell .el-button--primary:not(.is-plain):not(.is-text) {

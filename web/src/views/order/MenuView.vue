@@ -550,5 +550,22 @@ export default {
     flex-direction: column;
     align-items: stretch;
   }
+  .menu-page :deep(.quick-entries__grid) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .menu-page :deep(.meal-switch) {
+    flex-wrap: wrap;
+    border-radius: var(--radius-xl);
+  }
+  .menu-page :deep(.meal-switch__item) {
+    flex: 1 0 auto;
+    min-height: 36px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    font-size: var(--fs-12);
+  }
+  .menu-page :deep(.dish-grid) {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
