@@ -1,246 +1,550 @@
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElInputNumber } from 'element-plus'
+<script>
+import '@/styles/order.css'
+import '@/components/dishes/dishes.css'
+import { ElLoading, ElMessage, ElMessageBox, ElTable, ElTableColumn } from 'element-plus'
 import 'element-plus/theme-chalk/el-table.css'
-import 'element-plus/theme-chalk/el-input-number.css'
-// el-table / el-table-column / el-input-number 未全局注册，页面内按需引入
-void ElTable; void ElTableColumn; void ElInputNumber
-import { catalogApi } from '@/api/catalog'
+import 'element-plus/theme-chalk/el-table-column.css'
+import 'element-plus/theme-chalk/el-loading.css'
+import { mapStores } from 'pinia'
+import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useUserStore } from '@/stores/user'
+import DishTopBar from '@/components/dishes/DishTopBar.vue'
+import DishFormDialog from '@/components/dishes/DishFormDialog.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import StatusTag from '@/components/ui/StatusTag.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import {
+  DISH_CATEGORIES,
+  DISH_STATUS_OPTIONS,
+  filterDishList,
+  mealLabel,
+  resolveDishImage,
+  statusLabel,
+} from '@/components/dishes/dish-meta'
 
-const user = useUserStore()
-const dishes = ref([])
-const loading = ref(true)
-const errorMsg = ref('')
-const keyword = ref('')
-const dialogOpen = ref(false)
-const editing = ref(false)
-const saving = ref(false)
-const form = ref({ id: '', name: '', price: 0, category: '家常小炒', status: 'success', desc: '' })
-
-const CATEGORIES = ['家常小炒', '面食米线', '轻食蔬菜', '风味套餐']
-const STATUS = [
-  { key: 'success', label: '可点餐' },
-  { key: 'warning', label: '余量少' },
-  { key: 'danger', label: '已售罄' },
-]
-
-// 商家只看自己档口的菜品
-const visibleDishes = computed(() => {
-  const own = dishes.value.filter((d) => d.stallId === user.user?.stallId)
-  const kw = keyword.value.trim().toLowerCase()
-  return kw ? own.filter((d) => d.name.toLowerCase().includes(kw)) : own
-})
-
-async function load() {
-  loading.value = true
-  errorMsg.value = ''
-  try {
-    dishes.value = await catalogApi.dishes()
-  } catch (error) {
-    errorMsg.value = requestMessage(error, '菜品加载失败。')
-  } finally {
-    loading.value = false
-  }
-}
-
-function openAdd() {
-  editing.value = false
-  form.value = { id: '', name: '', price: 0, category: '家常小炒', status: 'success', desc: '' }
-  dialogOpen.value = true
-}
-
-function openEdit(dish) {
-  editing.value = true
-  form.value = {
-    id: dish.id,
-    name: dish.name,
-    price: Number(dish.price),
-    category: dish.category,
-    status: dish.status,
-    desc: dish.desc || '',
-  }
-  dialogOpen.value = true
-}
-
-async function save() {
-  if (!form.value.name || Number(form.value.price) <= 0) {
-    ElMessage.warning('请填写菜名与有效价格')
-    return
-  }
-  saving.value = true
-  try {
-    // TODO: 接入菜品写接口后替换；当前演示以本地态更新并提示。
-    const existing = dishes.value.find((d) => d.id === form.value.id)
-    if (existing) {
-      Object.assign(existing, {
-        name: form.value.name,
-        price: Number(form.value.price),
-        category: form.value.category,
-        status: form.value.status,
-        desc: form.value.desc,
-      })
-    } else {
-      dishes.value.push({
-        id: `dish-${Date.now()}`,
-        name: form.value.name,
-        price: Number(form.value.price),
-        category: form.value.category,
-        status: form.value.status,
-        desc: form.value.desc,
-        stall: user.user?.displayName || '青禾小厨',
-        stallId: user.user?.stallId,
-        badges: [],
-        spice: 0,
-        tags: [],
-        image: '/images/fresh-bowl.jpg',
-        meal: 'lunch',
-      })
+export default {
+  components: {
+    ElTable,
+    ElTableColumn,
+    DishTopBar,
+    DishFormDialog,
+    AppIcon,
+    StatusTag,
+    PriceTag,
+    EmptyState,
+  },
+  directives: {
+    loading: ElLoading.directive,
+  },
+  data() {
+    return {
+      assetBase: import.meta.env.BASE_URL,
+      dishes: [],
+      stalls: [],
+      loading: true,
+      errorMsg: '',
+      keyword: '',
+      categoryFilter: '全部',
+      statusFilter: 'all',
+      actingId: '',
+      dialogOpen: false,
+      editing: false,
+      editingDish: null,
+      saving: false,
+      dialogError: '',
+      categories: ['全部', ...DISH_CATEGORIES],
+      statusOptions: DISH_STATUS_OPTIONS,
     }
-    dialogOpen.value = false
-    ElMessage.success(editing.value ? '菜品已更新' : '菜品已新增')
-  } finally {
-    saving.value = false
-  }
+  },
+  computed: {
+    ...mapStores(useUserStore),
+    stallId() {
+      return this.userStore.user?.stallId || ''
+    },
+    ownStall() {
+      return this.stalls.find((item) => String(item.id) === String(this.stallId)) || null
+    },
+    ownStallLabel() {
+      if (!this.ownStall) return this.userStore.user?.displayName || this.stallId || '当前档口'
+      return `${this.ownStall.name}（${this.ownStall.canteen}${
+        this.ownStall.window ? ` · ${this.ownStall.window}` : ''
+      }）`
+    },
+    ownDishes() {
+      if (!this.stallId) return []
+      return this.dishes.filter((item) => String(item.stallId) === String(this.stallId))
+    },
+    visibleDishes() {
+      return filterDishList(this.ownDishes, {
+        category: this.categoryFilter,
+        keyword: this.keyword,
+        status: this.statusFilter,
+      })
+    },
+    successCount() {
+      return this.ownDishes.filter((item) => item.status === 'success').length
+    },
+    warningCount() {
+      return this.ownDishes.filter((item) => item.status === 'warning').length
+    },
+    dangerCount() {
+      return this.ownDishes.filter((item) => item.status === 'danger').length
+    },
+    hasFilter() {
+      return (
+        this.categoryFilter !== '全部' ||
+        this.statusFilter !== 'all' ||
+        Boolean(this.keyword.trim())
+      )
+    },
+  },
+  mounted() {
+    this.load()
+  },
+  methods: {
+    async load() {
+      this.loading = true
+      this.errorMsg = ''
+      try {
+        const [dishes, stalls] = await Promise.all([
+          dishesApi.list(this.stallId ? { stallId: this.stallId } : {}),
+          dishesApi.stalls(),
+        ])
+        this.dishes = Array.isArray(dishes) ? dishes : []
+        this.stalls = Array.isArray(stalls) ? stalls : []
+      } catch (error) {
+        this.errorMsg = requestMessage(error, '菜品加载失败，请稍后重试。')
+      } finally {
+        this.loading = false
+      }
+    },
+    imageOf(dish) {
+      return resolveDishImage(dish.image, this.assetBase)
+    },
+    statusText(key) {
+      return statusLabel(key)
+    },
+    mealText(key) {
+      return mealLabel(key)
+    },
+    openAdd() {
+      this.editing = false
+      this.editingDish = null
+      this.dialogError = ''
+      this.dialogOpen = true
+    },
+    openEdit(dish) {
+      this.editing = true
+      this.editingDish = { ...dish }
+      this.dialogError = ''
+      this.dialogOpen = true
+    },
+    async handleDialogSubmit(payload) {
+      if (this.saving) return
+      this.saving = true
+      this.dialogError = ''
+      try {
+        if (this.editing && this.editingDish?.id) {
+          await dishesApi.update(this.editingDish.id, payload)
+        } else {
+          await dishesApi.create(payload)
+        }
+        await this.load()
+        this.dialogOpen = false
+        ElMessage.success(this.editing ? '菜品已更新' : '菜品已新增')
+      } catch (error) {
+        this.dialogError = requestMessage(error, '保存菜品失败，请核对表单后重试。')
+      } finally {
+        this.saving = false
+      }
+    },
+    async toggleStatus(dish) {
+      if (this.actingId) return
+      const next = dish.status === 'danger' ? 'success' : 'danger'
+      const label = next === 'danger' ? '已售罄（下架）' : '可点餐（上架）'
+      try {
+        await ElMessageBox.confirm(`确定将「${dish.name}」设为「${label}」吗？`, '调整售卖状态', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'info',
+        })
+      } catch {
+        return
+      }
+      this.actingId = dish.id
+      try {
+        await dishesApi.update(dish.id, { status: next })
+        await this.load()
+        ElMessage.success(next === 'danger' ? `「${dish.name}」已下架` : `「${dish.name}」已上架`)
+      } catch (error) {
+        ElMessage.error(requestMessage(error, '更新菜品状态失败，请重试。'))
+      } finally {
+        this.actingId = ''
+      }
+    },
+    async removeDish(dish) {
+      if (this.actingId) return
+      try {
+        await ElMessageBox.confirm(
+          `确定删除「${dish.name}」吗？删除后将从校园菜单中移除。`,
+          '删除菜品',
+          {
+            confirmButtonText: '确认删除',
+            cancelButtonText: '保留',
+            type: 'warning',
+          },
+        )
+      } catch {
+        return
+      }
+      this.actingId = dish.id
+      try {
+        await dishesApi.remove(dish.id)
+        await this.load()
+        ElMessage.success('菜品已删除')
+      } catch (error) {
+        ElMessage.error(requestMessage(error, '删除菜品失败，请稍后重试。'))
+      } finally {
+        this.actingId = ''
+      }
+    },
+    resetFilters() {
+      this.keyword = ''
+      this.categoryFilter = '全部'
+      this.statusFilter = 'all'
+    },
+  },
 }
-
-async function toggleStatus(dish) {
-  const next = dish.status === 'danger' ? 'success' : 'danger'
-  const label = next === 'danger' ? '下架（售罄）' : '上架（可点餐）'
-  try {
-    await ElMessageBox.confirm(`确定将该菜品设为「${label}」吗？`, '调整售卖状态', { type: 'info' })
-  } catch {
-    return
-  }
-  dish.status = next
-  ElMessage.success(`已设为${label}`)
-}
-
-function statusText(key) {
-  return STATUS.find((s) => s.key === key)?.label || key
-}
-
-onMounted(load)
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="order-section-head">
-      <div>
-        <h2>档口工作台</h2>
-        <p>{{ user.user?.displayName }} · 管理本档口菜品的上下架与信息</p>
-      </div>
-      <el-button type="primary" @click="openAdd">
-        <AppIcon name="Plus" :size="16" /> 新增菜品
-      </el-button>
-    </div>
-
-    <div class="admin-toolbar">
-      <el-input v-model="keyword" placeholder="搜索本档口菜品" clearable class="admin-search">
-        <template #prefix><AppIcon name="Search" :size="16" /></template>
-      </el-input>
-      <span class="admin-count">共 {{ visibleDishes.length }} 道菜</span>
-    </div>
-
-    <div v-if="errorMsg" class="admin-error" role="alert">
-      <AppIcon name="CircleAlert" :size="18" /> {{ errorMsg }}
-      <el-button size="small" @click="load">重试</el-button>
-    </div>
-
-    <EmptyState
-      v-else-if="!loading && !visibleDishes.length"
-      title="还没有菜品"
-      detail="点击右上角新增菜品，丰富你的档口菜单。"
-      action-label="新增菜品"
-      icon="Store"
-      @action="openAdd"
-    />
-
-    <el-table v-else v-loading="loading" :data="visibleDishes" class="admin-table" stripe empty-text="暂无菜品">
-      <el-table-column label="菜品" min-width="220">
-        <template #default="{ row }">
-          <div class="table-dish">
-            <img :src="row.image" :alt="row.name" />
-            <div>
-              <strong>{{ row.name }}</strong>
-              <span>{{ row.desc }}</span>
-            </div>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="分类" width="120">
-        <template #default="{ row }">{{ row.category }}</template>
-      </el-table-column>
-      <el-table-column label="价格" width="120">
-        <template #default="{ row }"><PriceTag :value="row.price" size="sm" /></template>
-      </el-table-column>
-      <el-table-column label="状态" width="120">
-        <template #default="{ row }">
-          <StatusTag :type="row.status" :text="statusText(row.status)" dot />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
-        <template #default="{ row }">
-          <el-button size="small" text @click="openEdit(row)">编辑</el-button>
-          <el-button size="small" text type="primary" @click="toggleStatus(row)">
-            {{ row.status === 'danger' ? '上架' : '下架' }}
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-dialog v-model="dialogOpen" :title="editing ? '编辑菜品' : '新增菜品'" width="480px">
-      <el-form :model="form" label-position="top">
-        <el-form-item label="菜品名称">
-          <el-input v-model="form.name" maxlength="20" placeholder="例如：招牌红烧肉饭" />
-        </el-form-item>
-        <el-form-item label="价格（元）">
-          <el-input-number v-model="form.price" :min="0.5" :max="999" :precision="2" :step="1" />
-        </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="form.category">
-            <el-option v-for="c in CATEGORIES" :key="c" :label="c" :value="c" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="售卖状态">
-          <el-radio-group v-model="form.status">
-            <el-radio-button v-for="s in STATUS" :key="s.key" :value="s.key">{{ s.label }}</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="菜品简介">
-          <el-input v-model="form.desc" type="textarea" :rows="2" maxlength="60" placeholder="一句话描述这道菜" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogOpen = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+  <div class="dish-shell">
+    <DishTopBar active="admin">
+      <template #actions>
+        <el-button plain size="small" @click="$router.push('/menu')">查看学生端菜单</el-button>
       </template>
-    </el-dialog>
+    </DishTopBar>
+
+    <main id="dish-main-content" class="dish-main">
+      <div class="admin-page">
+        <div class="admin-hero">
+          <div>
+            <p class="admin-breadcrumb">档口商家工作台 / 菜品管理</p>
+            <h1>欢迎来到档口工作台</h1>
+            <p class="admin-subtitle">
+              <AppIcon name="Store" :size="15" />
+              <span
+                >当前绑定档口：<strong>{{ ownStallLabel }}</strong></span
+              >
+            </p>
+          </div>
+          <div class="admin-hero__actions">
+            <el-button plain @click="$router.push('/center/overview')">回到个人中心</el-button>
+            <el-button type="primary" data-testid="add-dish-btn" @click="openAdd">
+              <AppIcon name="Plus" :size="16" /> 新增菜品
+            </el-button>
+          </div>
+        </div>
+
+        <section class="admin-metrics" aria-label="档口菜品统计">
+          <div class="admin-metric-card">
+            <span>本档口菜品</span>
+            <strong data-testid="metric-total">{{ ownDishes.length }}</strong>
+          </div>
+          <div class="admin-metric-card">
+            <span>可点餐</span>
+            <strong data-testid="metric-success">{{ successCount }}</strong>
+          </div>
+          <div class="admin-metric-card">
+            <span>余量少</span>
+            <strong data-testid="metric-warning">{{ warningCount }}</strong>
+          </div>
+          <div class="admin-metric-card">
+            <span>已售罄</span>
+            <strong data-testid="metric-danger">{{ dangerCount }}</strong>
+          </div>
+        </section>
+
+        <div class="admin-toolbar">
+          <el-input
+            v-model="keyword"
+            placeholder="搜索本档口菜品名称或简介"
+            aria-label="搜索本档口菜品"
+            clearable
+            class="admin-search"
+          >
+            <template #prefix><AppIcon name="Search" :size="16" /></template>
+          </el-input>
+
+          <div class="admin-chips" role="group" aria-label="按分类筛选">
+            <button
+              v-for="cat in categories"
+              :key="cat"
+              type="button"
+              class="admin-chip"
+              :class="{ 'is-active': categoryFilter === cat }"
+              :aria-pressed="categoryFilter === cat"
+              @click="categoryFilter = cat"
+            >
+              {{ cat }}
+            </button>
+          </div>
+
+          <div class="admin-chips" role="group" aria-label="按售卖状态筛选">
+            <button
+              type="button"
+              class="admin-chip"
+              :class="{ 'is-active': statusFilter === 'all' }"
+              :aria-pressed="statusFilter === 'all'"
+              @click="statusFilter = 'all'"
+            >
+              全部状态
+            </button>
+            <button
+              v-for="item in statusOptions"
+              :key="item.value"
+              type="button"
+              class="admin-chip"
+              :class="{ 'is-active': statusFilter === item.value }"
+              :aria-pressed="statusFilter === item.value"
+              @click="statusFilter = item.value"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+
+          <span class="admin-count">共 {{ visibleDishes.length }} 道菜</span>
+        </div>
+
+        <div v-if="errorMsg" class="admin-error" role="alert">
+          <AppIcon name="CircleAlert" :size="18" />
+          <span>{{ errorMsg }}</span>
+          <el-button size="small" @click="load">重试</el-button>
+        </div>
+
+        <EmptyState
+          v-else-if="!loading && !visibleDishes.length"
+          :title="hasFilter ? '没有匹配的菜品' : '还没有菜品'"
+          :detail="
+            hasFilter
+              ? '可以重置筛选条件查看本档口全部菜品。'
+              : '点击右上角新增菜品，丰富你的档口菜单。'
+          "
+          :action-label="hasFilter ? '重置筛选' : '新增菜品'"
+          icon="Store"
+          @action="hasFilter ? resetFilters() : openAdd()"
+        />
+
+        <div v-else class="admin-table-wrap">
+          <el-table
+            v-loading="loading"
+            :data="visibleDishes"
+            row-key="id"
+            class="admin-table"
+            stripe
+            empty-text="暂无菜品"
+            data-testid="admin-dishes-table"
+          >
+            <el-table-column label="菜品" min-width="230">
+              <template #default="{ row }">
+                <div class="table-dish">
+                  <img :src="imageOf(row)" :alt="row.name" />
+                  <div>
+                    <router-link :to="`/dish/${row.id}`" class="table-dish__link">
+                      {{ row.name }}
+                    </router-link>
+                    <span>{{ row.desc }}</span>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="分类" width="110">
+              <template #default="{ row }">{{ row.category }}</template>
+            </el-table-column>
+
+            <el-table-column label="餐次" width="82">
+              <template #default="{ row }">{{ mealText(row.meal) }}</template>
+            </el-table-column>
+
+            <el-table-column label="价格" width="128">
+              <template #default="{ row }">
+                <PriceTag :value="row.price" :original="row.originalPrice" size="sm" />
+              </template>
+            </el-table-column>
+
+            <el-table-column label="状态" width="112">
+              <template #default="{ row }">
+                <StatusTag :type="row.status" :text="statusText(row.status)" dot />
+              </template>
+            </el-table-column>
+
+            <el-table-column label="操作" width="248">
+              <template #default="{ row }">
+                <div class="admin-row-actions">
+                  <el-button
+                    size="small"
+                    plain
+                    :data-testid="`edit-dish-${row.id}`"
+                    @click="openEdit(row)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    size="small"
+                    plain
+                    :loading="actingId === row.id"
+                    :data-testid="`toggle-dish-${row.id}`"
+                    @click="toggleStatus(row)"
+                  >
+                    {{ row.status === 'danger' ? '上架' : '下架' }}
+                  </el-button>
+                  <el-button
+                    size="small"
+                    plain
+                    class="admin-delete-btn"
+                    :loading="actingId === row.id"
+                    :data-testid="`delete-dish-${row.id}`"
+                    @click="removeDish(row)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <DishFormDialog
+          v-model="dialogOpen"
+          :editing="editing"
+          :initial-dish="editingDish"
+          :saving="saving"
+          :error-message="dialogError"
+          @submit="handleDialogSubmit"
+        >
+          <template #hint>
+            <p class="admin-dialog-hint">
+              本次提交由服务端校验档口归属，仅作用于「{{ ownStall?.name || stallId }}」。
+            </p>
+          </template>
+        </DishFormDialog>
+      </div>
+    </main>
+
+    <footer class="dish-footer">
+      <span>食光校园 · 档口工作台</span>
+      <span>新增、编辑、上下架与删除后均自动重新 GET 回读最新列表</span>
+    </footer>
   </div>
 </template>
 
 <style scoped>
 .admin-page {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   padding-bottom: var(--space-8);
 }
-.admin-toolbar {
+.admin-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.admin-breadcrumb {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+.admin-hero h1 {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(24px, 2.2vw, 31px);
+  color: var(--forest);
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+}
+.admin-subtitle {
+  margin: 0;
+  font-size: var(--fs-13);
+  color: var(--muted);
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+.admin-subtitle strong {
+  color: var(--ink);
+}
+.admin-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.admin-metric-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.admin-metric-card span {
+  font-size: var(--fs-13);
+  color: var(--muted);
+}
+.admin-metric-card strong {
+  font-size: var(--fs-24);
+  color: var(--forest);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 .admin-search {
-  width: 300px;
+  width: 260px;
   max-width: 100%;
 }
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+}
+.admin-chip:hover {
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+}
+.admin-chip.is-active {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: var(--white);
+}
 .admin-count {
+  margin-left: auto;
   font-size: var(--fs-12);
   color: var(--muted);
 }
@@ -254,11 +558,15 @@ onMounted(load)
   border-radius: var(--radius-lg);
   font-size: var(--fs-13);
 }
-.admin-error span,
 .admin-error .el-button {
   margin-left: auto;
 }
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
 .admin-table {
+  min-width: 880px;
   border-radius: var(--radius-xl);
   overflow: hidden;
   border: 1px solid var(--line);
@@ -269,16 +577,12 @@ onMounted(load)
   align-items: center;
   gap: var(--space-3);
 }
-/* 局部修正：主按钮在深绿底上需白色文字（不改全局覆盖层，避免影响其他页面） */
-.admin-page :deep(.el-button--primary:not(.is-plain):not(.is-text)) {
-  --el-button-text-color: var(--white);
-  --el-button-hover-text-color: var(--white);
-}
 .table-dish img {
   width: 48px;
   height: 48px;
   object-fit: cover;
   border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 .table-dish div {
   display: flex;
@@ -286,9 +590,15 @@ onMounted(load)
   gap: 2px;
   min-width: 0;
 }
-.table-dish strong {
-  font-size: var(--fs-13);
+.table-dish__link {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
   color: var(--ink);
+}
+.table-dish__link:hover {
+  color: var(--forest);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .table-dish span {
   font-size: var(--fs-11);
@@ -296,5 +606,35 @@ onMounted(load)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-delete-btn {
+  color: var(--danger-600);
+  border-color: var(--danger-line);
+}
+.admin-delete-btn:hover {
+  background: var(--danger-100);
+  border-color: var(--danger-600);
+}
+.admin-dialog-hint {
+  margin: 0 0 var(--space-4);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
+  color: var(--forest);
+  font-size: var(--fs-12);
+}
+@media (max-width: 780px) {
+  .admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-search {
+    width: 100%;
+  }
 }
 </style>
