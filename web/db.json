@@ -41,10 +41,34 @@
     }
   ],
   "stalls": [
-    { "id": "stall-1", "name": "青禾小厨", "canteen": "第一食堂", "desc": "家常小炒 · 现炒现做" },
-    { "id": "stall-2", "name": "麦香面馆", "canteen": "第一食堂", "desc": "手工面点 · 汤鲜味浓" },
-    { "id": "stall-3", "name": "轻食小站", "canteen": "第一食堂", "desc": "低卡轻食 · 元气满满" },
-    { "id": "stall-4", "name": "暖心烧味", "canteen": "第一食堂", "desc": "风味套餐 · 分量十足" }
+    {
+      "id": "stall-1",
+      "name": "青禾小厨",
+      "canteen": "第一食堂",
+      "desc": "家常小炒 · 现炒现做",
+      "window": "A 窗口"
+    },
+    {
+      "id": "stall-2",
+      "name": "麦香面馆",
+      "canteen": "第一食堂",
+      "desc": "手工面点 · 汤鲜味浓",
+      "window": "B 窗口"
+    },
+    {
+      "id": "stall-3",
+      "name": "轻食小站",
+      "canteen": "第一食堂",
+      "desc": "低卡轻食 · 元气满满",
+      "window": "C 窗口"
+    },
+    {
+      "id": "stall-4",
+      "name": "暖心烧味",
+      "canteen": "第一食堂",
+      "desc": "风味套餐 · 分量十足",
+      "window": "D 窗口"
+    }
   ],
   "dishes": [
     {
@@ -253,5 +277,70 @@
       "sales": 265
     }
   ],
-  "orders": []
+  "orders": [
+    {
+      "id": "SG20261119001",
+      "userId": "student-1",
+      "userName": "王鸿",
+      "stallId": "stall-1",
+      "stallName": "青禾小厨",
+      "items": [
+        {
+          "dishId": "dish-01",
+          "name": "招牌红烧肉饭",
+          "image": "/images/hongshaorou.jpg",
+          "price": 18,
+          "qty": 1
+        },
+        {
+          "dishId": "dish-05",
+          "name": "麻婆豆腐",
+          "image": "/images/hongshaorou.jpg",
+          "price": 12,
+          "qty": 1
+        }
+      ],
+      "total": 30,
+      "remark": "少辣，米饭多一点",
+      "meal": "lunch",
+      "status": "preparing",
+      "pickupCode": "3186",
+      "window": "青禾小厨 · A 窗口",
+      "eta": "约 15 分钟",
+      "createdAt": "2026-11-19T03:20:00.000Z",
+      "updatedAt": "2026-11-19T03:20:00.000Z"
+    },
+    {
+      "id": "SG20261118002",
+      "userId": "student-1",
+      "userName": "王鸿",
+      "stallId": "stall-1",
+      "stallName": "青禾小厨",
+      "items": [
+        {
+          "dishId": "dish-02",
+          "name": "香煎鸡腿饭",
+          "image": "/images/jilifan.jpg",
+          "price": 16.5,
+          "qty": 1
+        },
+        {
+          "dishId": "dish-04",
+          "name": "宫保鸡丁",
+          "image": "/images/hongshaorou.jpg",
+          "price": 15,
+          "qty": 1
+        }
+      ],
+      "total": 31.5,
+      "remark": "",
+      "meal": "dinner",
+      "status": "completed",
+      "pickupCode": "2077",
+      "window": "青禾小厨 · A 窗口",
+      "eta": "约 15 分钟",
+      "createdAt": "2026-11-18T10:05:00.000Z",
+      "updatedAt": "2026-11-18T10:32:00.000Z"
+    }
+  ]
 }
