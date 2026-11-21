@@ -1,165 +1,17 @@
 # WEB 前端框架技术期末大作业
 
-## 项目信息
+**食光校园 · 食堂线上点餐系统（G5）**
 
-| 项目 | 内容 |
-| --- | --- |
-| 项目名称 | 食堂线上点餐系统 |
-| 选题编号 | G5 |
-| 课程名称 | WEB 前端框架技术 |
-| 小组人数 | 5 人 |
-| 组长 / 仓库创建者 | 王鸿（32605150621） |
-| 当前阶段 | 页面开发 A：登录、路由守卫及个人中心已实现；其他业务按分工继续开发 |
-| GitHub 仓库地址 | [WangHong3501/web-framework-final-canteen](https://github.com/WangHong3501/web-framework-final-canteen) |
-| 仓库可见性 | 公开（Public），所有人可查看；组员接受协作者邀请后可向本仓库推送分支 |
-| 线上部署地址 | 待开发及部署后补充 |
+学生可浏览校园档口和菜品、加入点餐车、下单及确认取餐。档口商家可维护本档口菜品、查看订单与经营概览，并推进本档口订单状态。项目使用课程演示数据与模拟会话。
 
-本项目面向学校食堂，计划支持学生浏览菜品、加入点餐车、下单取餐，以及档口商家管理菜品与订单。
+**当前阶段为 M3 β 版本地联调。** 主分支已有 F1–F5、E6/E7 和 Vant 手机点餐。单档口下单到取餐已在生产预览走通。M4 已有构建与部署方案，线上地址及手机访问仍待验收。
 
-**当前已提供可运行的 Vue 3 工程和页面开发 A。** 包含学生/商家登录、全局权限守卫、会话恢复与退出，以及个人中心下的概览、个人资料、用餐偏好和账号安全四个嵌套页面。菜单、点餐车、下单、订单管理和 Vant 页面仍由对应成员完成；现有接入入口不计入这些业务功能的完成情况。
+- 审查日期 `2026-11-21`，代码基线 [`05b1357`](https://github.com/WangHong3501/web-framework-final-canteen/commit/05b135715ce9e4bb308d626447576d18ead65295)。
+- [公开仓库](https://github.com/WangHong3501/web-framework-final-canteen) · [主分支](https://github.com/WangHong3501/web-framework-final-canteen/tree/main) · [Pull Requests](https://github.com/WangHong3501/web-framework-final-canteen/pulls?q=is%3Apr)
 
-设计与开发以三份作业资料的优秀档为目标，实际完成情况以 [页面 A 验收记录](./docs/page-a-verification.md) 为准，不能据此声称整个项目已完成或已获得优秀评分。
+## 本地运行
 
-## 小组成员与分工
-
-王鸿为组长和仓库创建者，负责建立、维护小组 GitHub 仓库及主分支合并。其余四位成员作为仓库协作者，使用各自的 GitHub 账号提交本人负责的代码和文档，共同建设同一个仓库。
-
-| 学号 | 姓名 | GitHub 账号 | 小组身份 | 负责内容 |
-| --- | --- | --- | --- | --- |
-| 32605150621 | 王鸿 | [WangHong3501](https://github.com/WangHong3501) | 组长、仓库创建者 | 集成与文档汇总；登录、用户 Pinia 仓库、会话与守卫、个人中心嵌套路由和账户页面 |
-| 32605150622 | 李岷鳌 | [21231gb](https://github.com/21231gb) | 组员、仓库协作者 | 点餐车 Pinia 仓库与持久化、提交订单、订单列表/流转；构建优化及部署；不重复维护登录态 |
-| 32605150604 | 翟毅 | [lulululululu28](https://github.com/lulululululu28) | 组员、仓库协作者 | 菜单列表、菜品详情（动态路由）；档口菜品管理及 Dialog 增删改 |
-| 32605150601 | 陈续文 | [xuwen-max](https://github.com/xuwen-max) | 组员、仓库协作者 | db.json 数据模型、json-server 接口、Axios 统一封装；请求 loading 状态与 catch 异常处理 |
-| 32605150615 | 江贤松 | [u12306q](https://github.com/u12306q) | 组员、仓库协作者 | Vant 移动端页面（菜单、点餐车、提交订单）；Element Plus 布局与界面风格统一 |
-
-具体的文件归属、交接接口、禁止重复开发的边界及优秀档验收要求见 [五人分工与协作边界](./docs/team-ownership.md)。每个文件只有一个后续维护负责人；跨模块修改在 Pull Request 中请负责人核对。当前基础代码由组长初始化，其他成员后续须独立提交本人负责的业务实现。
-
-## GitHub 仓库共建
-
-### 仓库与权限
-
-1. 小组仓库由王鸿创建并维护，仓库地址见上方“项目信息”。
-2. 组长已向表中四位组员发送协作者邀请。各成员使用表中对应账号登录，打开[仓库邀请页面](https://github.com/WangHong3501/web-framework-final-canteen/invitations)，点击 **Accept invitation** 接受邀请；邀请状态可在 **Settings → Collaborators** 中查看。
-3. 主分支约定为 `main`，由组长负责审阅及合并 Pull Request；成员在各自的工作分支开发。
-4. 每位成员完成自己的提交与推送，个人贡献通过 **Git 提交记录、分工表和答辩讲解** 相互对应。
-
-以下命令以 `main` 为主分支；如果实际仓库使用其他主分支名称，需统一替换命令中的 `main`。命令在 CMD 中执行。
-
-### 首次加入与测试提交
-
-课程 M0 检查要求为：**全员各推一条测试提交**。当前可以提交个人分工确认文档，后续进入开发阶段再提交本人负责的程序模块。
-
-下面以李岷鳌为例。其他成员替换示例中的学号、姓名和分支名。
-
-```cmd
-git clone https://github.com/WangHong3501/web-framework-final-canteen.git canteen-ordering
-cd canteen-ordering
-git switch main
-git pull --ff-only origin main
-git switch -c docs/32605150622-contribution
-```
-
-新建 `docs/contributions/32605150622-李岷鳌.md`，记录本人学号、姓名、负责模块和本次提交内容，然后执行：
-
-```cmd
-git add docs/contributions/32605150622-李岷鳌.md
-git commit -m "docs: 32605150622 李岷鳌 确认个人分工"
-git push -u origin docs/32605150622-contribution
-```
-
-推送后在 GitHub 创建 Pull Request，目标分支选 `main`，填写本次修改和检查结果，由组长审阅、处理冲突并合并。组长也需要保留本人实际完成工作的提交记录。
-
-### 后续分支与合并约定
-
-- 文档分支：`docs/学号-主题`，例如 `docs/32605150601-api-design`。
-- 功能分支：`feature/学号-模块`，例如 `feature/32605150604-menu`。
-- 修复分支：`fix/学号-问题`。
-- 开始新任务前切回 `main` 并执行 `git pull --ff-only origin main`，再创建工作分支。
-- 一次提交围绕一项明确修改，提交说明写清改动；已合并的工作不再继续堆积到原分支。
-- Pull Request 说明负责模块、修改内容与验证结果；发生冲突时由相关成员协商，组长协调合并。
-- 个人贡献记录持续写入 `docs/contributions/`，注明对应文件、提交或 Pull Request，以及实际检查结果。
-
-### M0 共建检查表
-
-- [x] 确定 G5 食堂线上点餐系统选题。
-- [x] 记录五位成员、组长身份及模块分工。
-- [x] 建立 README、忽略规则和基础目录占位。
-- [x] 创建小组 GitHub 仓库并补充实际地址。
-- [x] 组长向四位组员发出协作者邀请。
-- [x] 四位组员使用各自 GitHub 账号接受邀请。
-- [x] 王鸿使用本人账号完成首次真实提交与推送。
-- [ ] 李岷鳌使用本人账号完成首次真实提交与推送。
-- [ ] 翟毅使用本人账号完成首次真实提交与推送。
-- [ ] 陈续文使用本人账号完成首次真实提交与推送。
-- [ ] 江贤松使用本人账号完成首次真实提交与推送。
-- [ ] 四位组员分别完成工作分支与 Pull Request 合并流程，保留本人协作记录。
-
-勾选状态以实际操作为准。README 中的署名和分工说明不代表成员已经完成提交。
-
-## 基础目录
-
-```text
-.
-├── README.md                          项目说明、分工与 GitHub 共建流程
-├── .gitignore                         依赖、构建产物与本地配置忽略规则
-├── docs/
-│   ├── team-ownership.md              五人职责、文件所有权及优秀档矩阵
-│   ├── page-a-design.md               实体案例、视觉与架构设计
-│   ├── api-contract.md                请求、身份、模型与联调约定
-│   ├── page-a-verification.md         实测结果、截图和待完成项
-│   └── contributions/                个人实际贡献记录
-├── screenshots/                       后续功能验证与答辩截图
-├── web/                               Vue 3 + Vite 工程
-│   ├── package.json                   启动/构建/测试命令
-│   ├── package-lock.json              可复现依赖版本
-│   ├── db.json                        课程演示种子数据
-│   ├── server/                        json-server 与会话中间件
-│   ├── tests/                         单元/接口/浏览器/生产预览验收
-│   ├── public/                        本地摄影与 favicon
-│   └── src/
-│       ├── api/                       Axios 封装与业务接口
-│       ├── assets/                    图片等资源
-│       ├── components/                自封装通用组件
-│       ├── router/                    hash 路由、懒加载与权限守卫
-│       ├── stores/                    用户仓库；点餐车由对应成员新增
-│       ├── styles/                    公共样式
-│       └── views/                     auth / center / system 页面
-├── 启动食光校园.cmd                   Windows 本地启动入口
-├── 期末大作业-小组项目题目册（六组六题）.md
-├── 期末大作业-答辩评分表.docx
-└── 期末大作业-WEB前端框架技术-实验报告模板.docx
-```
-
-空目录通过 `.gitkeep` 保留。工程目录沿用本地调整后的 `web/`。运行时数据库和密码散列保存在 `web/.local/`，已加入 Git 忽略规则；界面操作不改写提交的 `db.json` 种子。
-
-## 后续开发规划
-
-当前功能状态如下，后续模块按唯一负责人交付并独立验收。
-
-| 优先级 | 功能 | 内容 | 当前状态 |
-| --- | --- | --- | --- |
-| 必做 F1 | 登录与守卫 | 学生/商家登录、角色校验、嵌套个人中心、会话恢复与退出 | 已实现，可本地验收 |
-| 必做 F2 | 菜单浏览 | 按餐次/分类切换、搜索、动态详情 | 已实现（`/menu`、`/dish/:id`） |
-| 必做 F3 | 点餐车 | 加减/清空、合计与持久化 | 已实现（`stores/cart.js`，persist 持久化） |
-| 必做 F4 | 提交订单 | 生成订单、服务端核价、重复提交防护 | 已实现（`/cart`，POST 下单） |
-| 必做 F5 | 订单列表与状态 | 本人订单、待取餐到已完成流转 | 已实现（`/orders`、`/order/:id`） |
-| 期望 E6 | 档口管理端 | 菜品 Table 增删改、上下架 | 已实现（`/admin/dishes`，Element Plus Dialog） |
-| 期望 E7 | 菜品搜索 | 关键词搜索及空态 | 已实现（双端共用 `useMenu`） |
-| 加分项 | Vant 移动端点餐 | 餐次/分类/步进器/提交栏/下单 Dialog，手机壳预览 | 已实现（`/mobile`，Vant 按需加载） |
-
-现有路由：账户 `/login`、`/center/*`；业务 `/menu`、`/dish/:id`、`/cart`、`/orders`、`/order/:id`、`/admin/dishes`、`/mobile`。全部懒加载，业务路由受全局守卫保护，`/admin/dishes` 仅商家可访问。
-
-**双端统一（Vant 移动端 + Element Plus 桌面端）落地方法见 [双端界面统一方案](./docs/dual-ui-unification.md)**：同一份 `tokens.css` 令牌作唯一真相源，把 `--el-*` 与 `--van-*` 变量同时映射到品牌的色阶/圆角/字号/动效；业务语义（售罄、招牌、辣度、状态流）封装成共享组件与 `useMenu` 逻辑，两端各自用 Element Plus 与 Vant 渲染；Vant 组件在 `MobileOrderView` 内按需引入，配合路由懒加载，桌面端产物不含 Vant 代码。
-
-技术方案沿用课程口径：Vue 3 选项式 API、Vite、npm、Vue Router hash 路由；Element Plus 承载主界面，Vant 承载移动端页面；Axios 请求本地 `json-server`（3001 端口）；Pinia 至少包含用户与点餐车两个仓库，并配置持久化。后续设计须对照题目册 T1—T7，覆盖组件 props / emit / 插槽、computed / watch、动态与嵌套路由、守卫与懒加载、GET / POST / PUT / DELETE、loading / catch，以及构建和部署验证。
-
-数据规划包含 `dishes`、`stalls`、`orders`，并补充登录使用的 `users`。具体字段和接口约定在 M1 设计阶段由相关负责人共同确认。
-
-## 开发环境与启动
-
-本次实测 Node.js `v22.23.2`、npm `10.9.8`。Vite 要求 Node `^20.19.0 || >=22.12.0`。依赖精确版本以 `web/package-lock.json` 为准：Vue `3.5.45`、Vue Router `4.6.4`、Pinia `3.0.4`、持久化插件 `4.7.1`、Element Plus `2.14.8`、Axios `1.21.1`、GSAP `3.15.1`、Vite `8.3.8`、json-server `0.17.4`。
-
-在仓库根目录打开 CMD：
+首次获取可执行 `git clone https://github.com/WangHong3501/web-framework-final-canteen.git`。在 VS Code 打开仓库根目录，然后在 CMD 终端运行以下命令。Node.js 版本需满足 `^20.19.0 || >=22.12.0`，本次复查使用 Node.js `22.23.2` 与 npm `10.9.8`。依赖版本由 `web/package-lock.json` 锁定。
 
 ```cmd
 cd web
@@ -167,54 +19,109 @@ npm ci
 npm run dev
 ```
 
-访问 [本地页面](http://127.0.0.1:5173/#/login)，接口位于 `http://127.0.0.1:3001`。一个命令会启动两个服务，终端需保持运行。Windows 也可以双击根目录的 `启动食光校园.cmd`；首次启动自动安装锁定依赖。
+打开 [登录页](http://127.0.0.1:5173/#/login)。`npm run dev` 同时启动 Vite（5173）和本地 API（3001）。Windows 也可双击 [启动食光校园.cmd](./启动食光校园.cmd)，保持终端运行。若分窗口启动，在 `web/` 分别执行 `npm run dev:api` 与 `npm run dev:web`。
 
-按课程要求分两个 CMD 窗口启动也可以：窗口一在 `web/` 执行 `npm run dev:api`，窗口二在 `web/` 执行 `npm run dev:web`。若启动提示端口占用，先结束自己之前启动的同一个服务，不要同时运行一键启动与两窗口启动。
+| 角色 | 演示账号 | 演示密码 | 体验路线 |
+| --- | --- | --- | --- |
+| 学生 | `32605150621` | `Shiguang@2026` | 点击「学生账号体验」，从 [校园菜单](http://127.0.0.1:5173/#/menu) 挑选同一档口的菜品，进入餐车、提交订单、查看取餐码。手机界面从 [Vant 点餐页](http://127.0.0.1:5173/#/mobile) 进入。 |
+| 档口商家 | `merchant01` | `Shiguang@2026` | 点击「商家账号体验」，在 [档口菜品管理](http://127.0.0.1:5173/#/admin/dishes) 操作本档口菜品，在订单工作台推进本档口订单。 |
 
-| 演示身份 | 账号 | 演示密码 |
-| --- | --- | --- |
-| 学生 | `32605150621` | `Shiguang@2026` |
-| 档口商家 | `merchant01` | `Shiguang@2026` |
-
-演示账号仅用于本地课程验证。用户库没有可直接读取的明文密码；服务端会校验会话和角色。普通登录用 sessionStorage，保持登录用 localStorage；退出、到期或修改密码后旧会话不可继续使用。服务端重启后内存会话失效，重新登录即可。
-
-修改资料或密码会保存在本机忽略提交的 `.local/` 运行数据中；其他同学克隆后仍使用初始演示账号。模拟身份服务不等同于学校生产统一认证。
+新版种子包含 4 个档口、12 道菜品和 2 笔示例订单。首次启动从 `web/db.json` 生成 `.local/db.runtime.json`，后续会继续使用这份运行库。已有运行库仍是旧菜单时，可以在 `web/` 使用独立的新版示例库启动。
 
 ```cmd
-npm test
-npm run test:e2e
-npm run build
-npm run test:preview
+set "DB_FILE=.local\demo-20261121\db.runtime.json"
+npm run dev
 ```
 
-Windows 浏览器验收使用已安装的 Chrome；其他系统在首次运行 Playwright 前执行 `npx playwright install chromium`。浏览器用例使用独立的 5174/3002 端口；生产预览冒烟验证用 4175/3003，均不改写个人运行数据库。
+运行库与本地凭据文件均在 Git 忽略的 `web/.local/` 中。API 重启后需要重新登录。环境变量见 [web/.env.example](./web/.env.example)。
 
-手动检查构建：先运行 `npm run build`，保留 API 服务，再执行 `npm run preview`，访问 `http://127.0.0.1:4173/#/login`。线上部署仍由李岷鳌负责；课程接口目前为本地服务，不将静态页面地址冒充完整线上系统。
+## 当前功能
 
-如果本机全局 npm 入口损坏，可以通过安装在 Node.js 旁的 npm CLI 执行相同命令，或者使用上述 Windows 启动脚本；不需要修改系统全局 npm。环境变量示例见 `web/.env.example`。
+| 范围 | 已实现内容 | 页面或模块 |
+| --- | --- | --- |
+| F1 登录与守卫 | 学生和商家登录、会话恢复、角色拦截，个人中心有概览、资料、用餐偏好和账号安全四个子页面 | `/login`、`/center/*` |
+| F2 菜单与详情 | 按档口、餐次和菜品分类筛选，显示售罄状态，详情按菜品 ID 加载并支持切换同档口推荐 | `/menu`、`/dish/:id` |
+| F3 点餐车 | 双端共用 Pinia 仓库，支持加减、逐项移除及刷新恢复。金额按整数分计算，下单成功后自动清空，手动清空入口待补 | `/cart`、`stores/cart.js` |
+| F4 下单 | 服务端按当前菜价重新核算，每单限一个档口，生成订单号和四位取餐码 | `/cart`、`/mobile`、`POST /orders` |
+| F5 订单与取餐 | 学生看本人订单，商家可推进本档口状态。已验证「备餐中 → 待取餐 → 已完成」 | `/orders`、`/order/:id` |
+| E6 档口管理 | Element Plus 表格、表单与弹窗。新增、改价、上下架、删除接入接口，写入后重新读取。商家另有经营概览 | `/admin/dishes`、`/admin/overview` |
+| E7 搜索 | 桌面端支持菜名、档口和描述关键词，手机端支持关键词及分类筛选 | `/menu`、`/mobile` |
+| Vant 移动端 | 手机壳预览、分类和餐次、步进器、餐车结算弹窗及订单回显 | `/mobile` |
+| O8 评价打星 | 详情显示种子数据中的评分，提交评价待开发 | `/dish/:id` |
 
-## 设计与验收资料
+工程使用 Vue 3、Vite、Vue Router hash 路由、Pinia 与持久化插件、Element Plus、Vant、Axios、GSAP 和 json-server。页面路由按需加载。账户与餐车各有独立 Pinia 仓库，统一网络层支持 GET、POST、PUT、DELETE。锁定版本以 [依赖锁文件](./web/package-lock.json) 为准。
 
-- [五人分工与协作边界](./docs/team-ownership.md)：唯一文件负责人、交接约定和优秀档验收矩阵。
-- [页面开发 A 设计](./docs/page-a-design.md)：实际校园案例、官方前端/GSAP 技能、视觉方案、路由表、组件树和状态设计。
-- [账户接口约定](./docs/api-contract.md)：身份、模型、错误响应与跨模块接口。
-- [页面 A 验收记录](./docs/page-a-verification.md)：实际测试结果、运行截图、构建指标与未完成项。
-- [王鸿的贡献记录](./docs/contributions/32605150621-王鸿.md)：本阶段实际产出及答辩讲解入口。
-- [商家经营概览](./docs/merchant-dashboard.md)：商家端经营视角、指标口径、文件清单、验收记录与答辩话术。
+## 审查与验收
 
-## 后续里程碑
+下表记录 `05b1357` 的复查结果。测试在隔离的代码副本和示例数据库中完成。
 
-| 阶段 | 交付与检查 |
+| 检查 | 实测结果 |
 | --- | --- |
-| M0 组队与建仓 | 选题、分工入库；全员各推一条真实测试提交 |
-| M1 设计审阅 | 完成需求分析、路由表、组件树、状态设计及接口设计，经教师审阅后开工 |
-| M2 α 版 | 登录、核心菜单列表及接口联通，主分支可运行 |
-| M3 β 版 | 全部 F 项完成；移动端页面和 Pinia 仓库可验证，对照 T1—T6 自查 |
-| M4 部署 | 构建成功、preview 验证、线上核心动线及手机访问验证 |
-| M5 答辩 | 演示、每人讲解本人模块、提交报告与贡献记录 |
+| `npm test` | **51 / 51 通过**，含单元与接口测试 |
+| `npm run test:e2e` | **14 / 14 通过**，覆盖账户流程、档口筛选、动态详情、菜品增删改及移动布局 |
+| `npm run build` | 通过。Vite 用时 841 ms，产出 75 个文件，未压缩总大小 1,815,467 B。入口 JS 分块为 15.29 kB（gzip 6.21 kB） |
+| 生产预览实测 | 单档口桌面下单、商家推进到待取餐、学生确认完成均通过，Vant 下单返回并显示新订单 |
+| `npm run test:preview` | 静态资源、hash 路由、会话恢复和离线重试通过。axe 扫描的 6 个账户与异常页面均报告文字对比度问题，命令整体未通过 |
+| `npm run format:check` | Prettier 报告 25 个文件需要整理 |
 
-## 作业资料
+**待修项目**
 
-- [小组项目题目册](./期末大作业-小组项目题目册（六组六题）.md)：G5 功能范围、统一技术指标、分工与里程碑。
-- [答辩评分表](./期末大作业-答辩评分表.docx)：Git 协作真实性、工程规范、文档与答辩要求。
-- [实验报告模板](./期末大作业-WEB前端框架技术-实验报告模板.docx)：模块设计、运行记录及个人贡献填写依据。
+- **跨档口结算**。餐车允许混加不同档口的菜，提交时 API 才以 `422 MIXED_STALLS` 拒绝。演示时请使用同一档口。结算页还需在提交前给出提示或提供按档口结算。 [餐车页面](./web/src/views/order/CartView.vue) · [接口约定](./docs/api-contract.md)
+- **个人中心待取餐统计**。实测订单成为 `ready` 后，订单页显示「待取餐」，个人中心仍显示 `0 笔`。摘要接口目前统计 `pending`，需同步订单状态口径。 [账户摘要接口](./web/server/auth.cjs) · [个人中心概览](./web/src/views/center/OverviewView.vue)
+- **商家订单操作**。订单工作台可查看各档口订单，前端也为其他档口的进行中订单显示「推进状态」。接口只允许操作本档口订单，前端需按归属显示操作。 [订单工作台](./web/src/views/order/OrdersView.vue) · [接口约定](./docs/api-contract.md)
+- **对比度和课程规范**。生产预览发现部分按钮文案和辅助文字对比度不足。菜单、详情和档口管理采用选项式 API，餐车、订单和 Vant 页仍使用 `<script setup>`，需对照课程 T1 统一。 [公共样式](./web/src/styles/overrides.css) · [课程题目册](./期末大作业-小组项目题目册（六组六题）.md)
+
+在 `web/` 可复跑 `npm test`、`npm run test:e2e`、`npm run build` 和 `npm run test:preview`。`test:preview` 需要先构建。Windows 的浏览器测试使用 Chrome，E2E 使用端口 5174/3002，生产预览测试使用 4175/3003。浏览器测试会刷新仓库根目录 `screenshots/` 的验收图，复查时可使用独立检出目录。
+
+## 构建与部署
+
+前端产物在 `web/dist/`。手动预览时，先在 `web/` 执行 `npm run build`，在一个终端运行 `npm run dev:api`，另一个终端执行 `npm run preview`，随后访问 [生产构建本地预览](http://127.0.0.1:4173/#/login)。
+
+线上方案由静态前端和常驻 Node API 组成。当前示例使用 Nginx 将同源 `/api/` 转发至本机 3001，健康检查路径为 `/api/health`。截至本次审查，仓库的 GitHub Pages 未启用，也未记录可验收的线上地址。M4 需要补充实际地址和手机端下单至取餐验证。 [部署说明与优化对比](./docs/deploy-32605150622.md) · [Nginx 配置](./deploy/nginx.conf)
+
+## 小组成员与交付
+
+王鸿是组长和仓库创建者，其余四位为组员。五位成员均有本人账号署名的提交进入 `main`。分工与协作记录如下。
+
+| 学号 | 姓名 | GitHub 账号 | 负责范围 | 主分支交付证据 |
+| --- | --- | --- | --- | --- |
+| 32605150621 | 王鸿 | [WangHong3501](https://github.com/WangHong3501) | 页面 A、登录态、路由守卫、个人中心与集成 | [PR #1](https://github.com/WangHong3501/web-framework-final-canteen/pull/1) · [个人记录](./docs/contributions/32605150621-王鸿.md) |
+| 32605150622 | 李岷鳌 | [21231gb](https://github.com/21231gb) | 点餐车金额与持久化、订单模块维护、构建优化和部署 | [提交 d0028d7](https://github.com/WangHong3501/web-framework-final-canteen/commit/d0028d704921738aa2874e2eb6eca85b17423c2b) 经 Git 合并进入 `main` · [个人记录](./docs/contributions/32605150622-李岷鳌.md) |
+| 32605150604 | 翟毅 | [lulululululu28](https://github.com/lulululululu28) | 页面 B、菜单筛选、动态详情、档口菜品 CRUD | [PR #3](https://github.com/WangHong3501/web-framework-final-canteen/pull/3) · [个人记录](./docs/contributions/32605150604-翟毅.md) |
+| 32605150601 | 陈续文 | [xuwen-max](https://github.com/xuwen-max) | 种子数据、json-server 业务接口、Axios 公共层和契约 | [PR #2](https://github.com/WangHong3501/web-framework-final-canteen/pull/2) · [个人记录](./docs/contributions/32605150601-陈续文.md) |
+| 32605150615 | 江贤松 | [u12306q](https://github.com/u12306q) | Vant 手机点餐、公共 UI 与双端风格统一 | [提交 9060fa1](https://github.com/WangHong3501/web-framework-final-canteen/commit/9060fa1c544bf218ccf73e16bb21344b22ca1c5a) 直接进入 `main` · [双端记录](./docs/dual-ui-unification.md) |
+
+后续协作以 `main` 为合并目标。先在 CMD 执行 `git switch main` 和 `git pull --ff-only origin main`，再从最新主分支创建 `feature/学号-模块`、`fix/学号-问题` 或 `docs/学号-主题` 分支。使用本人账号小步提交，推送分支后发起 PR，由组长审核与合并。跨模块的改动在 PR 中请对应文件的负责人核对。 [五人分工与协作边界](./docs/team-ownership.md)
+
+## 工程与资料
+
+```text
+.
+├── web/
+│   ├── src/          Vue 页面、组件、路由、Pinia 与 Axios
+│   ├── server/       json-server、会话、菜品和订单接口
+│   ├── db.json       演示种子数据
+│   ├── public/       本地图片与图标
+│   └── tests/        单元、接口、浏览器与生产预览用例
+├── docs/             设计、分工、接口、验收和个人贡献记录
+├── deploy/           反向代理部署样例
+├── screenshots/       已归档的验收图
+└── 启动食光校园.cmd   Windows 启动入口
+```
+
+- [页面 A 设计](./docs/page-a-design.md) · [页面 A 验收](./docs/page-a-verification.md) · [页面 B 设计](./docs/page-b-design.md) · [页面 B 验收](./docs/page-b-verification.md)
+- [接口契约](./docs/api-contract.md) · [设计规范](./docs/design-system.md) · [双端界面统一](./docs/dual-ui-unification.md) · [商家经营概览](./docs/merchant-dashboard.md)
+- 截图可查看 [校园菜单](./screenshots/G5-15-菜单档口切换-桌面.png)、[菜品详情](./screenshots/G5-16-菜品详情-桌面.png)、[档口管理](./screenshots/G5-17-档口菜品管理-桌面.png) 和 [Vant 点餐](./screenshots/G5-10-移动点餐-真机.png)。
+
+## 课程里程碑
+
+| 阶段 | 当前证据 |
+| --- | --- |
+| M0 组队与建仓 | 已建仓并确定分工，五人均已有主分支提交 |
+| M1 设计审阅 | 页面设计、分工和接口契约已入库，课堂审阅状态以教师记录为准 |
+| M2 α 版 | 登录、核心菜单和接口已联通，主分支可运行 |
+| **M3 β 版** | **核心功能已集成，完成本地流程复查**，课程 T1、结算交互、状态显示和对比度仍需收尾 |
+| M4 部署 | 本地构建通过，已有 Nginx 方案，线上地址与手机动线验收待完成 |
+| M5 答辩 | 继续汇总复验、个人讲解和实验报告 |
+
+课程依据为 [小组项目题目册](./期末大作业-小组项目题目册（六组六题）.md)、[答辩评分表](./期末大作业-答辩评分表.docx) 和 [实验报告模板](./期末大作业-WEB前端框架技术-实验报告模板.docx)。
