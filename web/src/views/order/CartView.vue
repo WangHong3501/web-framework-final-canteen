@@ -75,7 +75,7 @@ async function submitOrder() {
             <img :src="item.image" :alt="item.name" class="cart-line__img" />
             <div class="cart-line__info">
               <strong>{{ item.name }}</strong>
-              <span>¥{{ item.price.toFixed(2) }} / 份</span>
+              <span>¥{{ (item.priceCents / 100).toFixed(2) }} / 份</span>
             </div>
             <div class="qty-stepper">
               <button class="is-minus" type="button" :aria-label="`减少${item.name}`" @click="qtyChange(item.dishId, item.qty - 1)">
@@ -86,7 +86,7 @@ async function submitOrder() {
                 <AppIcon name="Plus" :size="14" />
               </button>
             </div>
-            <strong class="cart-line__sum">¥{{ (item.price * item.qty).toFixed(2) }}</strong>
+            <strong class="cart-line__sum">¥{{ ((item.priceCents * item.qty) / 100).toFixed(2) }}</strong>
             <button class="cart-line__remove" type="button" :aria-label="`移除${item.name}`" @click="cart.remove(item.dishId)">
               <AppIcon name="Trash2" :size="15" />
             </button>
