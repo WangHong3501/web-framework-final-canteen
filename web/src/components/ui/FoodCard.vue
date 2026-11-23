@@ -2,7 +2,7 @@
 import StatusTag from './StatusTag.vue'
 import PriceTag from './PriceTag.vue'
 import AppIcon from './AppIcon.vue'
-import { isDishSoldOut } from '@/components/dishes/dish-meta'
+import { DEFAULT_CUISINE, isDishSoldOut } from '@/components/dishes/dish-meta'
 const STATUS_TEXT = {
   success: '可点餐',
   warning: '余量少',
@@ -41,6 +41,9 @@ export default {
     extraTags() {
       return this.food.tags || []
     },
+    cuisine() {
+      return this.food.cuisine === DEFAULT_CUISINE ? '' : this.food.cuisine
+    },
   },
 }
 </script>
@@ -70,7 +73,8 @@ export default {
       <h3 class="food-name">{{ food.name }}</h3>
       <p class="food-desc">{{ food.desc }}</p>
 
-      <div v-if="spiceText || extraTags.length" class="food-meta">
+      <div v-if="cuisine || spiceText || extraTags.length" class="food-meta">
+        <StatusTag v-if="cuisine" type="info" size="sm" :text="cuisine" />
         <StatusTag v-if="spiceText" type="hot" size="sm" :text="spiceText" />
         <StatusTag
           v-for="tag in extraTags"

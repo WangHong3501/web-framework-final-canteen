@@ -16,6 +16,8 @@
 
 生成描述要求每格独立呈现一道校园食堂菜，统一采用暖木色桌面、自然窗光、浅色餐具和 45° 取景，画面无文字和水印。历史照片路径继续供旧订单和既有资料使用。
 
+新增的 `web/public/images/dish-13.webp` 至 `dish-60.webp` 同样由内置 ImageGen 生成。提示词按菜品编号分成四张三列四行的摄影图集，描述各道菜的主要食材、做法和盛装方式。要求每格独立居中，使用浅木色桌面、自然光和略俯视的角度，画面无文字和水印。成品按编号拆分为 WebP，与种子库中的菜名逐一核对。
+
 ## 界面审查依据
 
 本次复查使用从 GitHub 获取的 [Vercel Web Design Guidelines](https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines)，用于核对按钮名称、表单标签、键盘焦点、弹窗交互与窄屏布局。修复后的行为通过浏览器用例回归，见 [终版审查](./final-review.md)。

@@ -1,88 +1,8 @@
-.account-app {
-  min-height: 100vh;
-}
-.account-app .app-header {
-  height: 78px;
-  background: #fff;
-  border-bottom: 1px solid var(--line);
-}
-.account-app .app-header__inner {
-  max-width: 1440px;
-  margin: auto;
-  height: 100%;
-  padding: 0 38px;
-  display: flex;
-  align-items: center;
-  gap: 58px;
-}
-.account-app .top-nav {
-  display: flex;
-  align-items: stretch;
-  gap: 34px;
-  align-self: stretch;
-  font-size: 14px;
-}
-.account-app .top-nav a,
-.account-app .top-nav button {
-  display: flex;
-  align-items: center;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: var(--muted);
-  position: relative;
-}
-.account-app .top-nav a.router-link-active:not(.top-nav__link--muted) {
-  color: var(--forest);
-  font-weight: 650;
-}
-.account-app .top-nav a.router-link-active:not(.top-nav__link--muted)::after {
-  position: absolute;
-  content: '';
-  height: 3px;
-  background: var(--forest);
-  left: 10px;
-  right: 10px;
-  bottom: 0;
-  border-radius: 3px 3px 0 0;
-}
-.account-app .top-nav .top-nav__link--muted {
-  color: var(--gray-400);
-}
-.account-app .header-identity {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 23px;
-}
-.account-app .canteen-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.account-app .header-user {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font-size: 12px;
-}
-.account-app .header-user > span:last-child {
-  max-width: 110px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .account-app .account-shell {
   max-width: 1440px;
   margin: auto;
   padding: 31px 38px 45px;
   gap: 34px;
-  min-height: calc(100vh - 143px);
   align-items: stretch;
 }
 .account-app .account-aside {
@@ -145,27 +65,29 @@
 .account-app .el-menu-item.is-active .nav-chevron {
   opacity: 0.7;
 }
-.account-app .sidebar-bottom {
-  margin-top: auto;
-  padding-top: 80px;
+.account-app .account-actions {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
 }
-.account-app .sidebar-quote {
-  padding: 20px 20px 22px;
-  color: #698255;
-  background: #edf1e4;
-  border-radius: 15px;
-}
-.account-app .sidebar-quote p {
-  font-size: 14px;
-  line-height: 1.9;
-  color: #526a42;
-  margin: 8px 0 12px;
-}
-.account-app .sidebar-quote > span {
+.account-app .account-actions button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-control);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: transparent;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-13);
+}
+.account-app .account-actions button:hover {
+  color: var(--forest);
 }
 .account-app .account-content {
+  flex: 1;
   overflow: visible;
   padding: 8px 0 0;
   min-width: 0;
@@ -457,29 +379,6 @@
   gap: 15px;
   padding: 10px 0;
   font-size: 12px;
-}
-.account-app .app-footer {
-  max-width: 1364px;
-  margin: auto;
-  border-top: 1px solid var(--line);
-  padding: 19px 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  color: var(--muted);
-  font-size: 10px;
-}
-.account-app .app-footer > span:first-child {
-  color: var(--muted);
-  font-weight: 550;
-}
-.account-app .app-footer button {
-  margin-left: auto;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font-size: 10px;
-  color: var(--muted);
 }
 .account-app .settings-grid {
   display: grid;
@@ -775,10 +674,6 @@
   align-items: flex-start;
 }
 @media (max-width: 1180px) {
-  .account-app .app-header__inner {
-    padding: 0 25px;
-    gap: 36px;
-  }
   .account-app .account-shell {
     padding: 25px;
     gap: 24px;
@@ -819,10 +714,6 @@
   }
   .account-app .date-chip {
     display: none;
-  }
-  .account-app .app-footer {
-    margin-left: 25px;
-    margin-right: 25px;
   }
 }
 @media (max-width: 900px) {
@@ -870,61 +761,43 @@
   }
 }
 @media (max-width: 680px) {
-  .account-app .app-header {
-    height: 66px;
-  }
-  .account-app .app-header__inner {
-    padding: 0 19px;
-    gap: 12px;
-  }
-  .account-app .top-nav,
-  .account-app .canteen-label {
-    display: none;
-  }
-  .account-app .header-user {
-    font-size: 11px;
-  }
-  .account-app .header-user > span:last-child {
-    max-width: 75px;
-  }
   .account-app .account-shell {
     padding: 0 0 28px;
     gap: 0;
     flex-direction: column;
-    min-height: calc(100vh - 121px);
   }
   .account-app .account-aside {
     width: 100% !important;
-    overflow: hidden;
-    background: white;
+    background: var(--surface);
     border-bottom: 1px solid var(--line);
   }
-  .account-app .sidebar-identity,
-  .account-app .sidebar-bottom {
+  .account-app .sidebar-identity {
     display: none;
   }
   .account-app .account-menu {
-    display: flex;
-    overflow-x: auto;
-    padding: 9px 13px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: var(--space-2) var(--space-3) 0;
     margin: 0;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .account-app .account-menu .el-menu-item {
-    flex: 1 0 auto;
-    height: 39px;
-    padding: 0 10px !important;
+    justify-content: center;
+    height: var(--size-control-mobile);
+    padding: 0 !important;
     margin: 0;
-    font-size: 11px;
-    gap: 5px;
-    border-radius: 9px;
+    font-size: var(--fs-12);
+    border-radius: var(--radius-sm);
   }
-  .account-app .account-menu .el-menu-item > svg:first-child {
-    width: 15px;
-    height: 15px;
-  }
-  .account-app .account-menu .nav-chevron {
+  .account-app .account-menu .el-menu-item > svg {
     display: none;
+  }
+  .account-app .account-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    border-top: 0;
+    margin-top: 0;
+    padding: 0 var(--space-2);
   }
   .account-app .account-content {
     padding: 24px 17px 0;
@@ -1005,16 +878,6 @@
   }
   .account-app .identity-note {
     font-size: 10px;
-  }
-  .account-app .app-footer {
-    margin-left: 17px;
-    margin-right: 17px;
-    padding: 18px 0;
-    gap: 10px;
-    font-size: 9px;
-  }
-  .account-app .app-footer button {
-    font-size: 9px;
   }
   .account-app .settings-grid {
     gap: 18px;

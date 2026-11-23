@@ -105,9 +105,6 @@ export default {
             }}
           </p>
         </div>
-        <el-button v-if="!user.isMerchant" type="primary" @click="$router.push('/menu')">
-          <AppIcon name="Plus" :size="16" /> 再点一单
-        </el-button>
       </div>
 
       <div class="filter-row">
@@ -134,13 +131,15 @@ export default {
         <EmptyState
           :title="filter === 'all' ? '还没有订单记录' : '这个分类下没有订单'"
           :detail="
-            filter === 'all'
-              ? '去菜单挑几道喜欢的菜，开启今天的好食光。'
-              : '换个筛选条件看看，或去菜单再点一单。'
+            filter !== 'all'
+              ? ''
+              : user.isMerchant
+                ? '新订单会出现在这里。'
+                : '下单后可在这里查看取餐进度。'
           "
-          action-label="去点餐"
+          :action-label="filter !== 'all' ? '查看全部订单' : user.isMerchant ? '' : '去点餐'"
           icon="ReceiptText"
-          @action="$router.push('/menu')"
+          @action="filter === 'all' ? $router.push('/menu') : (filter = 'all')"
         />
 
         <section v-if="suggestions.length" class="suggest-strip" aria-label="今日推荐菜品">
@@ -155,10 +154,6 @@ export default {
                 }}
               </p>
             </div>
-            <button type="button" class="suggest-strip__more" @click="$router.push('/menu')">
-              {{ user.isMerchant ? '查看菜品' : '看看全部菜品' }}
-              <AppIcon name="ArrowRight" :size="16" />
-            </button>
           </div>
           <div class="suggest-strip__grid">
             <button
@@ -166,7 +161,13 @@ export default {
               :key="dish.id"
               type="button"
               class="suggest-card"
-              @click="$router.push({ name: 'dish-detail', params: { id: dish.id } })"
+              @click="
+                $router.push({
+                  name: 'dish-detail',
+                  params: { id: dish.id },
+                  query: { from: 'orders' },
+                })
+              "
             >
               <img :src="image(dish.image)" :alt="dish.name" />
               <span class="suggest-card__body">
@@ -446,21 +447,6 @@ export default {
   font-size: var(--fs-13);
   color: var(--muted);
 }
-.suggest-strip__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  padding: 8px 14px;
-  border: 1px solid var(--brand-200);
-  border-radius: var(--radius-pill);
-  background: var(--brand-50);
-  color: var(--forest);
-  font-size: var(--fs-13);
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-}
-.suggest-strip__more:focus-visible,
 .suggest-card:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;

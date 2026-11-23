@@ -17,7 +17,6 @@ import {
   ElSkeletonItem,
   ElContainer,
   ElAside,
-  ElMain,
   ElRadioGroup,
   ElRadioButton,
 } from 'element-plus'
@@ -41,7 +40,6 @@ import 'element-plus/theme-chalk/el-skeleton.css'
 import 'element-plus/theme-chalk/el-skeleton-item.css'
 import 'element-plus/theme-chalk/el-container.css'
 import 'element-plus/theme-chalk/el-aside.css'
-import 'element-plus/theme-chalk/el-main.css'
 import 'element-plus/theme-chalk/el-radio-group.css'
 import 'element-plus/theme-chalk/el-radio-button.css'
 import 'element-plus/theme-chalk/el-message.css'
@@ -75,7 +73,6 @@ for (const component of [
   ElSkeletonItem,
   ElContainer,
   ElAside,
-  ElMain,
   ElRadioGroup,
   ElRadioButton,
 ])

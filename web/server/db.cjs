@@ -1,15 +1,15 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const { randomUUID } = require('node:crypto')
+const { categories: CATEGORIES, cuisines: CUISINES } = require('../src/shared/dish-taxonomy.json')
 
 /**
- * 共享数据字典：种子、接口校验和前端类型说明都以这里为准。
- * 修改枚举时必须同步 docs/api-contract.md 与相关接口测试。
+ * 菜品分类和菜系由前后端共用的数据字典定义。
  */
 const ROLES = ['student', 'merchant']
 const CANTEENS = ['第一食堂', '第二食堂', '风味食堂']
 const MEALS = ['breakfast', 'lunch', 'dinner', 'night']
 const DISH_STATUS = ['success', 'warning', 'danger']
-const CATEGORIES = ['家常小炒', '面食米线', '轻食蔬菜', '风味套餐']
 const TAG_TYPES = ['veg', 'halal', 'spicy']
 const ORDER_STATUS = ['pending', 'preparing', 'ready', 'completed', 'refunded']
 const SPICE_LEVELS = [0, 1, 2, 3]
@@ -103,6 +103,7 @@ function validateSeedData(db) {
     else if (dish?.stall !== stallsById.get(dish.stallId)?.name)
       errors.push(`${label}.stall 与 stallId 对应档口名称不一致`)
     if (!CATEGORIES.includes(dish?.category)) errors.push(`${label}.category 不在枚举内`)
+    if (!CUISINES.includes(dish?.cuisine)) errors.push(`${label}.cuisine 不在枚举内`)
     if (!MEALS.includes(dish?.meal)) errors.push(`${label}.meal 不在枚举内`)
     if (!DISH_STATUS.includes(dish?.status)) errors.push(`${label}.status 不在枚举内`)
     if (!Array.isArray(dish?.badges) || dish.badges.length > 3)
@@ -166,9 +167,36 @@ function assertRuntimeShape(db, source) {
     if (!Array.isArray(db[key])) throw new Error(`运行数据库缺少数组字段 ${key}（${source}）`)
 }
 
+function upgradeCatalog(runtime, data, seed) {
+  const revision = seed.catalog?.revision ?? 0
+  if ((data.catalog?.revision ?? 0) >= revision) return
+
+  const existing = new Map(data.dishes.map((dish) => [dish?.id, dish]))
+  const stalls = new Map(data.stalls.map((stall) => [stall?.id, stall?.name]))
+  for (const dish of seed.dishes) {
+    const current = existing.get(dish.id)
+    if (current) {
+      if (!current.cuisine && current.name === dish.name) current.cuisine = dish.cuisine
+      continue
+    }
+    // 新种子菜品使用独立的编号前缀，避开老运行库里由商家新增的 dish-NN。
+    const stall = stalls.get(dish.stallId)
+    if (dish.id.startsWith('dish-seed-') && stall) data.dishes.push({ ...dish, stall })
+  }
+  data.catalog = { ...data.catalog, revision }
+
+  const temporary = `${runtime}.${randomUUID()}.tmp`
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(data, null, 2) + '\n', { flag: 'wx' })
+    fs.renameSync(temporary, runtime)
+  } finally {
+    fs.rmSync(temporary, { force: true })
+  }
+}
+
 /**
  * 准备 json-server 使用的运行库：种子只读校验，运行库首次从种子复制。
- * 已存在的运行库保留同学本地操作结果，只做结构检查，不深校验业务字段。
+ * 菜单升级只追加本次种子菜品，并保留已有运行数据。
  */
 function prepareDatabase(filePath) {
   const seedPath = path.resolve(__dirname, '../db.json')
@@ -188,6 +216,7 @@ function prepareDatabase(filePath) {
     throw new Error(`运行数据库无法解析（${runtime}）：${error.message}`)
   }
   assertRuntimeShape(runtimeData, runtime)
+  upgradeCatalog(runtime, runtimeData, seed)
   return runtime
 }
 
@@ -196,7 +225,6 @@ module.exports = {
   CANTEENS,
   MEALS,
   DISH_STATUS,
-  CATEGORIES,
   TAG_TYPES,
   ORDER_STATUS,
   SPICE_LEVELS,

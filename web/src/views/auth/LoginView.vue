@@ -1,6 +1,5 @@
 <script>
 import './login.css'
-import { ElMessage } from 'element-plus'
 import { mapStores } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { requestMessage } from '@/api/http'
@@ -66,8 +65,9 @@ export default {
       this.error = ''
       try {
         await this.userStore.login({ ...this.form, account: this.form.account.trim() })
-        ElMessage.success('欢迎回来，今天也要好好吃饭。')
-        await this.$router.replace(safeDestination(this.$route.query.redirect))
+        await this.$router.replace(
+          safeDestination(this.$route.query.redirect, this.userStore.user.role),
+        )
       } catch (error) {
         this.error = requestMessage(error, '登录未完成，请核对账号后重试。')
       } finally {

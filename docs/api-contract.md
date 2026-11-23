@@ -47,7 +47,8 @@
 | `desc` | string | ≤120 字，禁止控制字符 |
 | `stall` | string | 档口名称，服务端按 `stallId` 回填，客户端不可改 |
 | `stallId` | string | 必须引用存在的档口；商家只能写自己档口 |
-| `category` | string | `家常小炒` / `面食米线` / `轻食蔬菜` / `风味套餐` |
+| `category` | string | `家常小炒` / `面食米线` / `轻食蔬菜` / `风味套餐` / `面点小食` / `汤羹粥品` / `凉菜卤味` / `饮品甜点` |
+| `cuisine` | string | `粤菜` / `闽菜` / `川菜` / `湘菜` / `苏菜` / `浙菜` / `鲁菜` / `徽菜` / `沪菜` / `西北风味` / `其他风味`；未分类的历史菜品归入 `其他风味` |
 | `meal` | string | `breakfast` / `lunch` / `dinner` / `night` |
 | `status` | string | `success` 正常 / `warning` 紧张 / `danger` 售罄 |
 | `badges` | string[] | ≤3 项，每项 1–8 字，自动去重 |
@@ -114,17 +115,17 @@
 
 | 接口 | 方法 | 权限 | 行为 |
 | --- | --- | --- | --- |
-| `/dishes` | GET | 登录 | 列表；支持 `stallId` / `stall` / `meal` / `category` / `status` / `q` 过滤 |
+| `/dishes` | GET | 登录 | 列表；支持 `stallId` / `stall` / `meal` / `category` / `cuisine` / `status` / `q` 过滤 |
 | `/dishes/:id` | GET | 登录 | 详情；不存在 404 |
 | `/dishes` | POST | 商家 | 新增本档口菜品；201 返回完整对象 |
 | `/dishes/:id` | PUT/PATCH | 商家 | 部分更新本档口菜品；只写白名单字段 |
 | `/dishes/:id` | DELETE | 商家 | 删除本档口菜品；204；不存在 404 |
 
-**菜品写白名单**：`name`、`price`、`originalPrice`、`image`、`desc`、`category`、`meal`、`status`、`badges`、`spice`、`tags`。未知字段一律 422 `INVALID_FIELDS` 并回传 `fields`。
+**菜品写白名单**包含 `name`、`price`、`originalPrice`、`image`、`desc`、`category`、`cuisine`、`meal`、`status`、`badges`、`spice`、`tags`。未知字段一律 422 `INVALID_FIELDS` 并回传 `fields`。
 
 **服务端托管字段**：`id`、`stall`、`stallId`、`rating`、`sales`。客户端可以随完整对象提交这些字段，但服务端不会按提交值写入；修改 `id` 会 422，试图把菜品移到其他档口会 403。新增时服务端生成 `dish-NN`、`rating: 0`、`sales: 0`，并根据商家账号绑定档口回填 `stall` / `stallId`。
 
-**筛选参数**：`meal`、`category`、`status` 只接受枚举值，非法值 422 `INVALID_QUERY`；`q` 对菜名、描述、档口名、分类做不区分大小写的包含匹配；`stallId`、`stall` 精确匹配。
+**筛选参数**中，`meal`、`category`、`cuisine`、`status` 只接受枚举值。非法值返回 422 `INVALID_QUERY`。`q` 对菜名、描述、档口名、分类和菜系做不区分大小写的包含匹配。`stallId`、`stall` 精确匹配。
 
 ### 4.4 订单
 

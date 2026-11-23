@@ -1,21 +1,17 @@
 <script>
 export default {
   props: {
-    label: { type: String, default: '移动端预览' },
+    label: { type: String, default: '移动端演示' },
   },
 }
 </script>
 
 <template>
   <div class="phone-stage">
-    <div class="phone-stage__caption">
-      <span class="phone-stage__dot"></span>
-      {{ label }}
-      <span class="phone-stage__hint">可直接在手机内操作</span>
-    </div>
+    <div class="phone-stage__caption">{{ label }}</div>
     <div class="phone-frame">
       <div class="phone-frame__notch" aria-hidden="true"></div>
-      <div class="phone-frame__screen">
+      <div class="phone-frame__screen" role="region" :aria-label="label" tabindex="0">
         <slot />
       </div>
       <div class="phone-frame__bar" aria-hidden="true"></div>
@@ -36,17 +32,6 @@ export default {
   gap: 8px;
   font-size: var(--fs-13);
   color: var(--muted);
-}
-.phone-stage__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--brand-500);
-  box-shadow: 0 0 0 4px var(--brand-100);
-}
-.phone-stage__hint {
-  color: var(--gray-400);
-  font-size: var(--fs-12);
 }
 .phone-frame {
   position: relative;
@@ -72,14 +57,11 @@ export default {
   z-index: 20;
 }
 .phone-frame__screen {
-  height: 720px;
-  overflow-y: hidden;
-  overflow-x: hidden;
+  height: min(720px, calc(100dvh - 180px));
+  min-height: 320px;
+  overflow-y: auto;
   background: var(--canvas);
   scrollbar-width: none;
-}
-.phone-frame__screen::-webkit-scrollbar {
-  display: none;
 }
 .phone-frame__bar {
   position: absolute;
@@ -91,10 +73,5 @@ export default {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.5);
   z-index: 20;
-}
-@media (max-width: 680px) {
-  .phone-stage__hint {
-    display: none;
-  }
 }
 </style>

@@ -1,13 +1,12 @@
 <script>
-import '@/styles/order.css'
-import '@/components/dishes/dishes.css'
 import { ElMessage } from 'element-plus'
 import { mapStores } from 'pinia'
+import { defineAsyncComponent } from 'vue'
 import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
-import DishTopBar from '@/components/dishes/DishTopBar.vue'
+import OrderShell from '@/components/order/OrderShell.vue'
 import DishStallTabs from '@/components/dishes/DishStallTabs.vue'
 import MealSwitch from '@/components/ui/MealSwitch.vue'
 import FoodCard from '@/components/ui/FoodCard.vue'
@@ -16,6 +15,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import {
   DISH_CATEGORIES,
+  DISH_CUISINES,
   DISH_MEALS,
   filterDishList,
   isDishSoldOut,
@@ -23,10 +23,32 @@ import {
 } from '@/components/dishes/dish-meta'
 
 const MEAL_OPTIONS_SET = new Set(DISH_MEALS.map((item) => item.key))
+const MobileOrderView = defineAsyncComponent(() => import('@/views/mobile/MobileOrderView.vue'))
+
+function readMenuFilters(query) {
+  return {
+    meal: MEAL_OPTIONS_SET.has(query.meal) ? query.meal : 'all',
+    stallId: typeof query.stall === 'string' && query.stall ? query.stall : 'all',
+    category: DISH_CATEGORIES.includes(query.category) ? query.category : '全部',
+    cuisine: DISH_CUISINES.includes(query.cuisine) ? query.cuisine : '全部',
+    keyword: typeof query.q === 'string' ? query.q : '',
+  }
+}
+
+function menuFilterQuery({ meal, stallId, category, cuisine, keyword }) {
+  const query = {}
+  if (meal !== 'all') query.meal = meal
+  if (stallId !== 'all') query.stall = stallId
+  if (category !== '全部') query.category = category
+  if (cuisine !== '全部') query.cuisine = cuisine
+  if (keyword.trim()) query.q = keyword.trim()
+  return query
+}
 
 export default {
   components: {
-    DishTopBar,
+    OrderShell,
+    MobileOrderView,
     DishStallTabs,
     MealSwitch,
     FoodCard,
@@ -34,22 +56,17 @@ export default {
     AppIcon,
     PriceTag,
   },
+  inject: ['compactLayout'],
   data() {
-    const query = this.$route.query
     return {
       assetBase: import.meta.env.BASE_URL,
       dishes: [],
       stalls: [],
       loading: true,
       loadError: '',
-      meal: MEAL_OPTIONS_SET.has(query.meal) ? query.meal : 'all',
-      stallId: typeof query.stall === 'string' && query.stall ? query.stall : 'all',
-      category:
-        typeof query.category === 'string' && DISH_CATEGORIES.includes(query.category)
-          ? query.category
-          : '全部',
-      keyword: typeof query.q === 'string' ? query.q : '',
+      ...readMenuFilters(this.$route.query),
       mealOptions: DISH_MEALS,
+      cuisines: DISH_CUISINES,
     }
   },
   computed: {
@@ -64,36 +81,26 @@ export default {
         meal: this.meal,
         stallId: this.stallId,
         category: this.category,
+        cuisine: this.cuisine,
         keyword: this.keyword,
       })
     },
-    dishCount() {
-      return this.dishes.length
+    showMobileMenu() {
+      return (
+        !this.userStore.isMerchant && (this.compactLayout || this.$route.name === 'mobile-order')
+      )
     },
-    availableCount() {
-      return this.dishes.filter((item) => !this.soldOut(item)).length
-    },
-    stallCount() {
-      return this.stalls.length
+    isMenuRoute() {
+      return ['menu', 'mobile-order'].includes(this.$route.name)
     },
     cartCount() {
       return this.userStore.isMerchant ? 0 : this.cartStore.count
     },
     hasActiveFilter() {
-      return (
-        this.meal !== 'all' ||
-        this.stallId !== 'all' ||
-        this.category !== '全部' ||
-        Boolean(this.keyword.trim())
-      )
+      return Object.keys(this.filterQuery).length > 0
     },
     filterQuery() {
-      const query = {}
-      if (this.meal !== 'all') query.meal = this.meal
-      if (this.stallId !== 'all') query.stall = this.stallId
-      if (this.category !== '全部') query.category = this.category
-      if (this.keyword.trim()) query.q = this.keyword.trim()
-      return query
+      return menuFilterQuery(this)
     },
   },
   watch: {
@@ -104,40 +111,19 @@ export default {
       },
     },
     categories(list) {
-      if (this.category !== '全部' && !list.includes(this.category)) {
+      if (!this.loading && this.category !== '全部' && !list.includes(this.category)) {
         this.category = '全部'
       }
     },
     filterQuery(nextQuery) {
-      const current = {
-        ...(MEAL_OPTIONS_SET.has(this.$route.query.meal) ? { meal: this.$route.query.meal } : {}),
-        ...(typeof this.$route.query.stall === 'string' && this.$route.query.stall
-          ? { stall: this.$route.query.stall }
-          : {}),
-        ...(typeof this.$route.query.category === 'string' &&
-        DISH_CATEGORIES.includes(this.$route.query.category)
-          ? { category: this.$route.query.category }
-          : {}),
-        ...(typeof this.$route.query.q === 'string' && this.$route.query.q.trim()
-          ? { q: this.$route.query.q.trim() }
-          : {}),
-      }
+      if (!this.isMenuRoute) return
+      const current = menuFilterQuery(readMenuFilters(this.$route.query))
       if (JSON.stringify(current) !== JSON.stringify(nextQuery)) {
-        this.$router.replace({ query: nextQuery })
+        this.$router.replace({ name: this.$route.name, query: nextQuery })
       }
     },
     '$route.query'(query) {
-      const nextMeal = MEAL_OPTIONS_SET.has(query.meal) ? query.meal : 'all'
-      const nextStall = typeof query.stall === 'string' && query.stall ? query.stall : 'all'
-      const nextCategory =
-        typeof query.category === 'string' && DISH_CATEGORIES.includes(query.category)
-          ? query.category
-          : '全部'
-      const nextKeyword = typeof query.q === 'string' ? query.q : ''
-      if (this.meal !== nextMeal) this.meal = nextMeal
-      if (this.stallId !== nextStall) this.stallId = nextStall
-      if (this.category !== nextCategory) this.category = nextCategory
-      if (this.keyword !== nextKeyword) this.keyword = nextKeyword
+      if (this.isMenuRoute) Object.assign(this, readMenuFilters(query))
     },
   },
   mounted() {
@@ -184,13 +170,25 @@ export default {
     minusDish(dish) {
       this.cartStore.decrease(dish.id)
     },
+    setDishQty(dish, qty) {
+      if (this.qtyOf(dish.id)) this.cartStore.setQty(dish.id, qty)
+      else if (qty > 0) this.cartStore.add(dish, qty)
+    },
     openDish(dish) {
-      this.$router.push({ name: 'dish-detail', params: { id: dish.id } })
+      this.$router.push({
+        name: 'dish-detail',
+        params: { id: dish.id },
+        query:
+          this.$route.name === 'mobile-order'
+            ? { ...this.filterQuery, from: 'mobile' }
+            : this.filterQuery,
+      })
     },
     resetFilters() {
       this.meal = 'all'
       this.stallId = 'all'
       this.category = '全部'
+      this.cuisine = '全部'
       this.keyword = ''
     },
   },
@@ -198,201 +196,172 @@ export default {
 </script>
 
 <template>
-  <div class="dish-shell">
-    <DishTopBar active="menu">
-      <template #actions>
-        <el-button
-          v-if="userStore.isMerchant"
-          plain
-          size="small"
-          @click="$router.push('/admin/dishes')"
+  <MobileOrderView
+    v-if="showMobileMenu"
+    v-model:meal="meal"
+    v-model:stall-id="stallId"
+    v-model:category="category"
+    v-model:cuisine="cuisine"
+    v-model:keyword="keyword"
+    :preview="!compactLayout"
+    :dishes="filteredDishes"
+    :stalls="stalls"
+    :categories="categories"
+    :cuisines="cuisines"
+    :has-filters="hasActiveFilter"
+    :loading="loading"
+    :load-error="loadError"
+    @update-quantity="setDishQty"
+    @open-dish="openDish"
+    @retry="loadMenu"
+    @reset="resetFilters"
+  />
+  <OrderShell v-else>
+    <div class="menu-page">
+      <div class="menu-heading">
+        <h1>{{ userStore.isMerchant ? '学生菜单预览' : '今日菜单' }}</h1>
+        <el-input
+          v-model="keyword"
+          placeholder="搜索菜名、档口或描述…"
+          aria-label="搜索菜名、档口或描述"
+          clearable
+          class="menu-search"
         >
-          档口菜品管理
-        </el-button>
-      </template>
-    </DishTopBar>
+          <template #prefix><AppIcon name="Search" :size="16" /></template>
+        </el-input>
+      </div>
 
-    <main id="dish-main-content" class="dish-main">
-      <div class="menu-page">
-        <section class="order-hero order-enter">
-          <h1>校园点餐</h1>
-          <p>选档口、挑菜品，凭码到窗口取餐。</p>
-          <div class="order-hero__meta">
-            <div>
-              <strong>{{ dishCount }}</strong><span>全部菜品</span>
-            </div>
-            <div>
-              <strong>{{ availableCount }}</strong><span>现在可做</span>
-            </div>
-            <div>
-              <strong>{{ stallCount }}</strong><span>供应档口</span>
-            </div>
-          </div>
-          <div class="order-hero__visual" aria-hidden="true">
-            <img :src="`${assetBase}images/dish-01.webp`" alt="" />
-          </div>
-        </section>
-
-        <DishStallTabs
-          v-model="stallId"
-          :stalls="stalls"
-          :total-count="dishes.length"
-          :filtered-count="filteredDishes.length"
-          @reset="resetFilters"
-        >
-          <template #extra>
-            <button v-if="hasActiveFilter" type="button" class="text-button" @click="resetFilters">
-              重置全部筛选
-            </button>
-          </template>
-        </DishStallTabs>
-
-        <div class="order-section-head">
-          <div>
-            <h2>今日菜单</h2>
-            <p>按档口、餐次或菜名筛选</p>
-          </div>
-        </div>
-
-        <div class="order-toolbar">
+      <section class="menu-filters" aria-label="筛选菜品">
+        <DishStallTabs v-model="stallId" :stalls="stalls" />
+        <div class="menu-filters__row">
           <MealSwitch v-model="meal" :options="mealOptions" />
-          <el-input
-            v-model="keyword"
-            placeholder="搜索菜名、档口或描述…"
-            aria-label="搜索菜名、档口或描述"
-            clearable
-            class="menu-search"
-          >
-            <template #prefix><AppIcon name="Search" :size="16" /></template>
-          </el-input>
-        </div>
-
-        <div class="category-row" role="tablist" aria-label="菜品分类">
-          <button
-            v-for="cat in categories"
-            :key="cat"
-            type="button"
-            role="tab"
-            class="category-chip"
-            :class="{ 'is-active': cat === category }"
-            :aria-selected="cat === category"
-            @click="category = cat"
-          >
-            {{ cat }}
-          </button>
-        </div>
-
-        <div v-if="loadError" class="menu-error" role="alert">
-          <AppIcon name="CircleAlert" :size="20" />
-          <span>{{ loadError }}</span>
-          <el-button size="small" @click="loadMenu">重新加载</el-button>
-        </div>
-
-        <div v-else-if="loading" class="dish-grid" aria-busy="true">
-          <div v-for="n in 8" :key="n" class="dish-skeleton">
-            <el-skeleton animated>
-              <template #template>
-                <el-skeleton-item variant="image" style="width: 100%; height: 150px" />
-                <div style="padding: 12px">
-                  <el-skeleton-item variant="text" style="width: 60%" />
-                  <el-skeleton-item variant="text" style="width: 90%; margin-top: 10px" />
-                  <el-skeleton-item variant="text" style="width: 40%; margin-top: 14px" />
-                </div>
-              </template>
-            </el-skeleton>
+          <div class="menu-filters__category">
+            <select v-model="cuisine" aria-label="菜系" class="menu-select">
+              <option value="全部">全部菜系</option>
+              <option v-for="item in cuisines" :key="item" :value="item">{{ item }}</option>
+            </select>
+            <select v-model="category" aria-label="菜品分类" class="menu-select">
+              <option v-for="cat in categories" :key="cat" :value="cat">
+                {{ cat === '全部' ? '全部分类' : cat }}
+              </option>
+            </select>
+            <button
+              v-if="hasActiveFilter && filteredDishes.length"
+              type="button"
+              class="text-button"
+              @click="resetFilters"
+            >
+              清除筛选
+            </button>
           </div>
         </div>
+      </section>
 
-        <div v-else-if="filteredDishes.length" class="dish-grid" data-testid="menu-dish-grid">
-          <FoodCard
-            v-for="dish in filteredDishes"
-            :key="dish.id"
-            :food="presentDish(dish)"
-            :data-testid="`menu-dish-${dish.id}`"
-            class="order-enter"
-            @click="openDish(dish)"
-          >
-            <template #action>
-              <div class="dish-action" @click.stop>
-                <button
-                  type="button"
-                  class="dish-detail-link"
-                  :aria-label="`查看${dish.name}详情`"
-                  @click="openDish(dish)"
-                >
-                  详情
-                </button>
-                <div v-if="!userStore.isMerchant && qtyOf(dish.id) > 0" class="qty-stepper">
-                  <button
-                    class="is-minus"
-                    type="button"
-                    :aria-label="`减少${dish.name}`"
-                    @click="minusDish(dish)"
-                  >
-                    <AppIcon name="Minus" :size="14" />
-                  </button>
-                  <strong>{{ qtyOf(dish.id) }}</strong>
-                  <button
-                    type="button"
-                    :disabled="qtyOf(dish.id) >= 20 || soldOut(dish)"
-                    :aria-label="`增加${dish.name}`"
-                    @click="addDish(dish)"
-                  >
-                    <AppIcon name="Plus" :size="14" />
-                  </button>
-                </div>
-                <button
-                  v-else-if="!userStore.isMerchant"
-                  class="add-btn"
-                  type="button"
-                  :disabled="soldOut(dish)"
-                  :aria-label="`将${dish.name}加入餐车`"
-                  @click="addDish(dish)"
-                >
-                  <AppIcon :name="soldOut(dish) ? 'Ban' : 'Plus'" :size="16" />
-                </button>
+      <div v-if="loadError" class="menu-error" role="alert">
+        <AppIcon name="CircleAlert" :size="20" />
+        <span>{{ loadError }}</span>
+        <el-button size="small" @click="loadMenu">重新加载</el-button>
+      </div>
+
+      <div v-else-if="loading" class="dish-grid" aria-busy="true">
+        <div v-for="n in 8" :key="n" class="dish-skeleton">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="image" style="width: 100%; height: 150px" />
+              <div style="padding: 12px">
+                <el-skeleton-item variant="text" style="width: 60%" />
+                <el-skeleton-item variant="text" style="width: 90%; margin-top: 10px" />
+                <el-skeleton-item variant="text" style="width: 40%; margin-top: 14px" />
               </div>
             </template>
-          </FoodCard>
+          </el-skeleton>
         </div>
-
-        <EmptyState
-          v-else
-          title="换个条件试试看"
-          detail="当前筛选条件暂时没有菜品，试试切换档口、餐次或重置筛选。"
-          action-label="重置筛选"
-          icon="Search"
-          @action="resetFilters"
-        />
-
-        <Transition name="cart-bar">
-          <div
-            v-if="!userStore.isMerchant && cartCount > 0"
-            class="cart-bar"
-            data-testid="menu-cart-bar"
-          >
-            <span class="cart-bar__basket">
-              <AppIcon name="ShoppingCart" :size="22" />
-              <span class="cart-bar__badge">{{ cartCount }}</span>
-            </span>
-            <div class="cart-bar__summary">
-              <small>已选 {{ cartCount }} 件 · 合计</small>
-              <PriceTag :value="cartStore.total" size="sm" />
-            </div>
-            <span class="cart-bar__spacer"></span>
-            <el-button type="primary" round @click="$router.push('/cart')">
-              去结算 <AppIcon name="ArrowRight" :size="16" />
-            </el-button>
-          </div>
-        </Transition>
       </div>
-    </main>
 
-    <footer class="dish-footer">
-      <span>食光校园 · 校园菜单</span>
-      <span>点餐车实时同步桌面与移动端页面</span>
-    </footer>
-  </div>
+      <div v-else-if="filteredDishes.length" class="dish-grid" data-testid="menu-dish-grid">
+        <FoodCard
+          v-for="dish in filteredDishes"
+          :key="dish.id"
+          :food="presentDish(dish)"
+          :data-testid="`menu-dish-${dish.id}`"
+          class="order-enter"
+          @click="openDish(dish)"
+        >
+          <template #action>
+            <div class="dish-action" @click.stop>
+              <button
+                type="button"
+                class="dish-detail-link"
+                :aria-label="`查看${dish.name}详情`"
+                @click="openDish(dish)"
+              >
+                详情
+              </button>
+              <div v-if="!userStore.isMerchant && qtyOf(dish.id) > 0" class="qty-stepper">
+                <button
+                  class="is-minus"
+                  type="button"
+                  :aria-label="`减少${dish.name}`"
+                  @click="minusDish(dish)"
+                >
+                  <AppIcon name="Minus" :size="14" />
+                </button>
+                <strong>{{ qtyOf(dish.id) }}</strong>
+                <button
+                  type="button"
+                  :disabled="qtyOf(dish.id) >= 20 || soldOut(dish)"
+                  :aria-label="`增加${dish.name}`"
+                  @click="addDish(dish)"
+                >
+                  <AppIcon name="Plus" :size="14" />
+                </button>
+              </div>
+              <button
+                v-else-if="!userStore.isMerchant"
+                class="add-btn"
+                type="button"
+                :disabled="soldOut(dish)"
+                :aria-label="`将${dish.name}加入餐车`"
+                @click="addDish(dish)"
+              >
+                <AppIcon :name="soldOut(dish) ? 'Ban' : 'Plus'" :size="16" />
+              </button>
+            </div>
+          </template>
+        </FoodCard>
+      </div>
+
+      <EmptyState
+        v-else
+        title="换个条件试试看"
+        detail="当前筛选条件暂时没有菜品，试试切换档口、餐次或重置筛选。"
+        action-label="重置筛选"
+        icon="Search"
+        @action="resetFilters"
+      />
+
+      <Transition name="cart-bar">
+        <div
+          v-if="!userStore.isMerchant && cartCount > 0"
+          class="cart-bar"
+          data-testid="menu-cart-bar"
+        >
+          <span class="cart-bar__basket">
+            <AppIcon name="ShoppingCart" :size="22" />
+            <span class="cart-bar__badge">{{ cartCount }}</span>
+          </span>
+          <div class="cart-bar__summary">
+            <small>已选 {{ cartCount }} 件 · 合计</small>
+            <PriceTag :value="cartStore.total" size="sm" />
+          </div>
+          <span class="cart-bar__spacer"></span>
+          <el-button type="primary" round @click="$router.push('/cart')">
+            去结算 <AppIcon name="ArrowRight" :size="16" />
+          </el-button>
+        </div>
+      </Transition>
+    </div>
+  </OrderShell>
 </template>
 
 <style scoped>
@@ -401,84 +370,39 @@ export default {
   margin: 0 auto;
   padding-bottom: var(--space-8);
 }
-.menu-page .order-hero {
-  padding: 24px clamp(20px, 4vw, 44px);
-  min-height: 166px;
-  margin-bottom: 16px;
+.menu-heading,
+.menu-filters__row,
+.menu-filters__category {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
-.menu-page .order-hero h1 {
-  font-size: clamp(26px, 3vw, 38px);
+.menu-heading {
+  margin-bottom: var(--space-4);
 }
-.menu-page .order-hero__meta {
-  margin-top: 14px;
+.menu-heading h1 {
+  margin: 0;
+  font-size: var(--fs-30);
+  line-height: var(--lh-title);
 }
-.menu-page .order-hero__meta div {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 5px;
+.menu-filters {
+  padding: 0 var(--space-4) var(--space-3);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
-.order-hero__visual {
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: 40%;
-  z-index: -1;
+.menu-filters__row,
+.menu-filters__category {
+  flex-wrap: wrap;
 }
-.order-hero__visual img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 51%;
-}
-.order-hero__visual::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, var(--brand-700), transparent 52%);
-}
-@media (max-width: 680px) {
-  .menu-page .order-hero {
-    min-height: 145px;
-  }
-  .order-hero__visual {
-    width: 34%;
-    opacity: 0.55;
-  }
-  .menu-page .order-hero p {
-    max-width: 70%;
-  }
-  .menu-page .order-hero__meta {
-    gap: 12px;
-  }
+.menu-filters .text-button {
+  min-height: var(--size-control-sm);
+  white-space: nowrap;
 }
 .menu-search {
-  width: 280px;
-  max-width: 100%;
-}
-.category-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 var(--space-4);
-}
-.category-chip {
-  padding: 8px 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--muted);
-  font-size: var(--fs-13);
-  font-weight: var(--fw-medium);
-  transition: all var(--dur-fast) var(--ease-out);
-}
-.category-chip:hover {
-  color: var(--forest);
-  border-color: var(--brand-300);
-}
-.category-chip.is-active {
-  background: var(--forest);
-  border-color: var(--forest);
-  color: var(--white);
-  box-shadow: 0 4px 10px var(--tint-1);
+  width: min(340px, 100%);
 }
 .menu-error {
   display: flex;
@@ -529,15 +453,15 @@ export default {
   transform: translateY(24px);
 }
 @media (max-width: 680px) {
+  .menu-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .menu-heading h1 {
+    font-size: var(--fs-24);
+  }
   .menu-search {
     width: 100%;
-  }
-  .order-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .menu-page :deep(.quick-entries__grid) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .menu-page :deep(.meal-switch) {
     flex-wrap: wrap;

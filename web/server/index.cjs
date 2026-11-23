@@ -4,13 +4,17 @@ const jsonServer = require('json-server')
 const {
   prepareDatabase,
   MEALS,
-  CATEGORIES,
   DISH_STATUS,
   ORDER_STATUS,
   SPICE_LEVELS,
   TAG_TYPES,
   isMoney,
 } = require('./db.cjs')
+const {
+  categories: CATEGORIES,
+  cuisines: CUISINES,
+  defaultCuisine: DEFAULT_CUISINE,
+} = require('../src/shared/dish-taxonomy.json')
 const { registerAuth } = require('./auth.cjs')
 
 const MERCHANT_NEXT = { pending: 'preparing', preparing: 'ready', ready: 'completed' }
@@ -24,6 +28,7 @@ const DISH_FIELDS = new Set([
   'stall',
   'stallId',
   'category',
+  'cuisine',
   'meal',
   'status',
   'listed',
@@ -116,6 +121,10 @@ function parseDishInput(body, { partial = false } = {}) {
   if (body.category !== undefined) {
     if (!CATEGORIES.includes(body.category)) add('category', '菜品分类不在允许的枚举内')
     else data.category = body.category
+  }
+  if (body.cuisine !== undefined) {
+    if (!CUISINES.includes(body.cuisine)) add('cuisine', '菜系不在允许的枚举内')
+    else data.cuisine = body.cuisine
   }
   if (body.meal !== undefined) {
     if (!MEALS.includes(body.meal)) add('meal', '餐次不在允许的枚举内')
@@ -317,6 +326,7 @@ function createApp(options = {}) {
       const votes = totals.get(dish.id)
       return {
         ...dish,
+        cuisine: dish.cuisine || DEFAULT_CUISINE,
         rating: votes ? round2(votes.sum / votes.count) : dish.rating,
         reviewCount: votes?.count || 0,
       }
@@ -356,7 +366,7 @@ function createApp(options = {}) {
               (dish) =>
                 dish.listed !== false || (ownCatalog && dish.stallId === req.auth.user.stallId),
             )
-          const { stallId, stall, meal, category, status, q } = req.query
+          const { stallId, stall, meal, category, cuisine, status, q } = req.query
           if (stallId !== undefined) list = list.filter((dish) => dish.stallId === stallId)
           if (stall !== undefined) list = list.filter((dish) => dish.stall === stall)
           if (meal !== undefined) {
@@ -369,6 +379,11 @@ function createApp(options = {}) {
               return replyError(res, 422, 'INVALID_QUERY', 'category 查询参数不在枚举内。')
             list = list.filter((dish) => dish.category === category)
           }
+          if (cuisine !== undefined) {
+            if (!CUISINES.includes(cuisine))
+              return replyError(res, 422, 'INVALID_QUERY', 'cuisine 查询参数不在枚举内。')
+            list = list.filter((dish) => (dish.cuisine || DEFAULT_CUISINE) === cuisine)
+          }
           if (status !== undefined) {
             if (!DISH_STATUS.includes(status))
               return replyError(res, 422, 'INVALID_QUERY', 'status 查询参数不在枚举内。')
@@ -377,7 +392,13 @@ function createApp(options = {}) {
           if (typeof q === 'string' && q.trim()) {
             const keyword = q.trim().toLowerCase()
             list = list.filter((dish) =>
-              [dish.name, dish.desc, dish.stall, dish.category].some((value) =>
+              [
+                dish.name,
+                dish.desc,
+                dish.stall,
+                dish.category,
+                dish.cuisine || DEFAULT_CUISINE,
+              ].some((value) =>
                 String(value || '')
                   .toLowerCase()
                   .includes(keyword),
@@ -419,7 +440,8 @@ function createApp(options = {}) {
           desc: data.desc || '',
           stall: stall.name,
           stallId: stall.id,
-          category: data.category || '家常小炒',
+          category: data.category || CATEGORIES[0],
+          cuisine: data.cuisine || DEFAULT_CUISINE,
           meal: data.meal || 'lunch',
           status: data.status || 'success',
           listed: data.listed ?? true,

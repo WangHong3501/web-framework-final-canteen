@@ -1,6 +1,4 @@
 <script>
-import '@/styles/order.css'
-import '@/components/dishes/dishes.css'
 import { ElLoading, ElMessage, ElMessageBox, ElTable, ElTableColumn } from 'element-plus'
 import 'element-plus/theme-chalk/el-table.css'
 import 'element-plus/theme-chalk/el-table-column.css'
@@ -9,7 +7,7 @@ import { mapStores } from 'pinia'
 import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useUserStore } from '@/stores/user'
-import DishTopBar from '@/components/dishes/DishTopBar.vue'
+import OrderShell from '@/components/order/OrderShell.vue'
 import DishFormDialog from '@/components/dishes/DishFormDialog.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import StatusTag from '@/components/ui/StatusTag.vue'
@@ -28,7 +26,7 @@ export default {
   components: {
     ElTable,
     ElTableColumn,
-    DishTopBar,
+    OrderShell,
     DishFormDialog,
     AppIcon,
     StatusTag,
@@ -229,229 +227,224 @@ export default {
 </script>
 
 <template>
-  <div class="dish-shell">
-    <DishTopBar active="admin">
-      <template #actions>
-        <el-button plain size="small" @click="$router.push('/menu')">查看学生端菜单</el-button>
-      </template>
-    </DishTopBar>
-
-    <main id="dish-main-content" class="dish-main">
-      <div class="admin-page">
-        <div class="admin-hero">
-          <div>
-            <p class="admin-breadcrumb">档口商家工作台 / 菜品管理</p>
-            <h1>欢迎来到档口工作台</h1>
-            <p class="admin-subtitle">
-              <AppIcon name="Store" :size="15" />
-              <span
-                >当前绑定档口：<strong>{{ ownStallLabel }}</strong></span
-              >
-            </p>
-          </div>
-          <div class="admin-hero__actions">
-            <el-button plain @click="$router.push('/center/overview')">回到个人中心</el-button>
-            <el-button type="primary" data-testid="add-dish-btn" @click="openAdd">
-              <AppIcon name="Plus" :size="16" /> 新增菜品
-            </el-button>
-          </div>
-        </div>
-
-        <section class="admin-metrics" aria-label="档口菜品统计">
-          <div class="admin-metric-card">
-            <span>本档口菜品</span>
-            <strong data-testid="metric-total">{{ ownDishes.length }}</strong>
-          </div>
-          <div class="admin-metric-card">
-            <span>可点餐</span>
-            <strong data-testid="metric-success">{{ successCount }}</strong>
-          </div>
-          <div class="admin-metric-card">
-            <span>余量少</span>
-            <strong data-testid="metric-warning">{{ warningCount }}</strong>
-          </div>
-          <div class="admin-metric-card">
-            <span>已售罄</span>
-            <strong data-testid="metric-danger">{{ dangerCount }}</strong>
-          </div>
-        </section>
-
-        <div class="admin-toolbar">
-          <el-input
-            v-model="keyword"
-            placeholder="搜索本档口菜品名称或简介"
-            aria-label="搜索本档口菜品"
-            clearable
-            class="admin-search"
-          >
-            <template #prefix><AppIcon name="Search" :size="16" /></template>
-          </el-input>
-
-          <div class="admin-chips" role="group" aria-label="按分类筛选">
-            <button
-              v-for="cat in categories"
-              :key="cat"
-              type="button"
-              class="admin-chip"
-              :class="{ 'is-active': categoryFilter === cat }"
-              :aria-pressed="categoryFilter === cat"
-              @click="categoryFilter = cat"
+  <OrderShell>
+    <div class="admin-page">
+      <div class="admin-hero">
+        <div>
+          <p class="admin-breadcrumb">档口商家工作台 / 菜品管理</p>
+          <h1>欢迎来到档口工作台</h1>
+          <p class="admin-subtitle">
+            <AppIcon name="Store" :size="15" />
+            <span
+              >当前绑定档口：<strong>{{ ownStallLabel }}</strong></span
             >
-              {{ cat }}
-            </button>
-          </div>
-
-          <div class="admin-chips" role="group" aria-label="按售卖状态筛选">
-            <button
-              type="button"
-              class="admin-chip"
-              :class="{ 'is-active': statusFilter === 'all' }"
-              :aria-pressed="statusFilter === 'all'"
-              @click="statusFilter = 'all'"
-            >
-              全部状态
-            </button>
-            <button
-              v-for="item in statusOptions"
-              :key="item.value"
-              type="button"
-              class="admin-chip"
-              :class="{ 'is-active': statusFilter === item.value }"
-              :aria-pressed="statusFilter === item.value"
-              @click="statusFilter = item.value"
-            >
-              {{ item.label }}
-            </button>
-          </div>
-
-          <span class="admin-count">共 {{ visibleDishes.length }} 道菜</span>
+          </p>
         </div>
-
-        <div v-if="errorMsg" class="admin-error" role="alert">
-          <AppIcon name="CircleAlert" :size="18" />
-          <span>{{ errorMsg }}</span>
-          <el-button size="small" @click="load">重试</el-button>
+        <div class="admin-hero__actions">
+          <el-button plain @click="$router.push('/menu')">预览学生菜单</el-button>
+          <el-button type="primary" data-testid="add-dish-btn" @click="openAdd">
+            <AppIcon name="Plus" :size="16" /> 新增菜品
+          </el-button>
         </div>
-
-        <EmptyState
-          v-else-if="!loading && !visibleDishes.length"
-          :title="hasFilter ? '没有匹配的菜品' : '还没有菜品'"
-          :detail="
-            hasFilter
-              ? '可以重置筛选条件查看本档口全部菜品。'
-              : '点击右上角新增菜品，丰富你的档口菜单。'
-          "
-          :action-label="hasFilter ? '重置筛选' : '新增菜品'"
-          icon="Store"
-          @action="hasFilter ? resetFilters() : openAdd()"
-        />
-
-        <div v-else class="admin-table-wrap">
-          <el-table
-            v-loading="loading"
-            :data="visibleDishes"
-            row-key="id"
-            class="admin-table"
-            stripe
-            empty-text="暂无菜品"
-            data-testid="admin-dishes-table"
-          >
-            <el-table-column label="菜品" min-width="230">
-              <template #default="{ row }">
-                <div class="table-dish">
-                  <img :src="imageOf(row)" :alt="row.name" />
-                  <div>
-                    <router-link :to="`/dish/${row.id}`" class="table-dish__link">
-                      {{ row.name }}
-                    </router-link>
-                    <span>{{ row.desc }}</span>
-                  </div>
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="分类" width="110">
-              <template #default="{ row }">{{ row.category }}</template>
-            </el-table-column>
-
-            <el-table-column label="餐次" width="82">
-              <template #default="{ row }">{{ mealText(row.meal) }}</template>
-            </el-table-column>
-
-            <el-table-column label="价格" width="128">
-              <template #default="{ row }">
-                <PriceTag :value="row.price" :original="row.originalPrice" size="sm" />
-              </template>
-            </el-table-column>
-
-            <el-table-column label="状态" width="112">
-              <template #default="{ row }">
-                <StatusTag
-                  :type="row.listed === false ? 'sold' : row.status"
-                  :text="row.listed === false ? '已下架' : statusText(row.status)"
-                  dot
-                />
-              </template>
-            </el-table-column>
-
-            <el-table-column label="操作" width="248">
-              <template #default="{ row }">
-                <div class="admin-row-actions">
-                  <el-button
-                    size="small"
-                    plain
-                    :data-testid="`edit-dish-${row.id}`"
-                    @click="openEdit(row)"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button
-                    size="small"
-                    plain
-                    :loading="actingId === row.id"
-                    :data-testid="`toggle-dish-${row.id}`"
-                    @click="toggleStatus(row)"
-                  >
-                    {{ row.listed === false ? '上架' : '下架' }}
-                  </el-button>
-                  <el-button
-                    size="small"
-                    plain
-                    class="admin-delete-btn"
-                    :loading="actingId === row.id"
-                    :data-testid="`delete-dish-${row.id}`"
-                    @click="removeDish(row)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <DishFormDialog
-          v-model="dialogOpen"
-          :editing="editing"
-          :initial-dish="editingDish"
-          :saving="saving"
-          :error-message="dialogError"
-          @submit="handleDialogSubmit"
-        >
-          <template #hint>
-            <p class="admin-dialog-hint">
-              本次提交由服务端校验档口归属，仅作用于「{{ ownStall?.name || stallId }}」。
-            </p>
-          </template>
-        </DishFormDialog>
       </div>
-    </main>
 
-    <footer class="dish-footer">
-      <span>食光校园 · 档口工作台</span>
-      <span>下架后，学生菜单将隐藏该菜品。</span>
-    </footer>
-  </div>
+      <section class="admin-metrics" aria-label="档口菜品统计">
+        <div class="admin-metric-card">
+          <span>本档口菜品</span>
+          <strong data-testid="metric-total">{{ ownDishes.length }}</strong>
+        </div>
+        <div class="admin-metric-card">
+          <span>可点餐</span>
+          <strong data-testid="metric-success">{{ successCount }}</strong>
+        </div>
+        <div class="admin-metric-card">
+          <span>余量少</span>
+          <strong data-testid="metric-warning">{{ warningCount }}</strong>
+        </div>
+        <div class="admin-metric-card">
+          <span>已售罄</span>
+          <strong data-testid="metric-danger">{{ dangerCount }}</strong>
+        </div>
+      </section>
+
+      <div class="admin-toolbar">
+        <el-input
+          v-model="keyword"
+          placeholder="搜索本档口菜品名称或简介"
+          aria-label="搜索本档口菜品"
+          clearable
+          class="admin-search"
+        >
+          <template #prefix><AppIcon name="Search" :size="16" /></template>
+        </el-input>
+
+        <div class="admin-chips" role="group" aria-label="按分类筛选">
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            type="button"
+            class="admin-chip"
+            :class="{ 'is-active': categoryFilter === cat }"
+            :aria-pressed="categoryFilter === cat"
+            @click="categoryFilter = cat"
+          >
+            {{ cat }}
+          </button>
+        </div>
+
+        <div class="admin-chips" role="group" aria-label="按售卖状态筛选">
+          <button
+            type="button"
+            class="admin-chip"
+            :class="{ 'is-active': statusFilter === 'all' }"
+            :aria-pressed="statusFilter === 'all'"
+            @click="statusFilter = 'all'"
+          >
+            全部状态
+          </button>
+          <button
+            v-for="item in statusOptions"
+            :key="item.value"
+            type="button"
+            class="admin-chip"
+            :class="{ 'is-active': statusFilter === item.value }"
+            :aria-pressed="statusFilter === item.value"
+            @click="statusFilter = item.value"
+          >
+            {{ item.label }}
+          </button>
+        </div>
+
+        <span class="admin-count">共 {{ visibleDishes.length }} 道菜</span>
+      </div>
+
+      <div v-if="errorMsg" class="admin-error" role="alert">
+        <AppIcon name="CircleAlert" :size="18" />
+        <span>{{ errorMsg }}</span>
+        <el-button size="small" @click="load">重试</el-button>
+      </div>
+
+      <EmptyState
+        v-else-if="!loading && !visibleDishes.length"
+        :title="hasFilter ? '没有匹配的菜品' : '还没有菜品'"
+        :detail="
+          hasFilter
+            ? '可以重置筛选条件查看本档口全部菜品。'
+            : '点击右上角新增菜品，丰富你的档口菜单。'
+        "
+        :action-label="hasFilter ? '重置筛选' : '新增菜品'"
+        icon="Store"
+        @action="hasFilter ? resetFilters() : openAdd()"
+      />
+
+      <div v-else class="admin-table-wrap">
+        <el-table
+          v-loading="loading"
+          :data="visibleDishes"
+          row-key="id"
+          class="admin-table"
+          stripe
+          empty-text="暂无菜品"
+          data-testid="admin-dishes-table"
+        >
+          <el-table-column label="菜品" min-width="230">
+            <template #default="{ row }">
+              <div class="table-dish">
+                <img :src="imageOf(row)" :alt="row.name" />
+                <div>
+                  <router-link
+                    :to="{
+                      name: 'dish-detail',
+                      params: { id: row.id },
+                      query: { from: 'admin-dishes' },
+                    }"
+                    class="table-dish__link"
+                  >
+                    {{ row.name }}
+                  </router-link>
+                  <span>{{ row.desc }}</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="分类" width="110">
+            <template #default="{ row }">{{ row.category }}</template>
+          </el-table-column>
+
+          <el-table-column label="餐次" width="82">
+            <template #default="{ row }">{{ mealText(row.meal) }}</template>
+          </el-table-column>
+
+          <el-table-column label="价格" width="128">
+            <template #default="{ row }">
+              <PriceTag :value="row.price" :original="row.originalPrice" size="sm" />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="状态" width="112">
+            <template #default="{ row }">
+              <StatusTag
+                :type="row.listed === false ? 'sold' : row.status"
+                :text="row.listed === false ? '已下架' : statusText(row.status)"
+                dot
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="248">
+            <template #default="{ row }">
+              <div class="admin-row-actions">
+                <el-button
+                  size="small"
+                  plain
+                  :data-testid="`edit-dish-${row.id}`"
+                  @click="openEdit(row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  size="small"
+                  plain
+                  :loading="actingId === row.id"
+                  :data-testid="`toggle-dish-${row.id}`"
+                  @click="toggleStatus(row)"
+                >
+                  {{ row.listed === false ? '上架' : '下架' }}
+                </el-button>
+                <el-button
+                  size="small"
+                  plain
+                  class="admin-delete-btn"
+                  :loading="actingId === row.id"
+                  :data-testid="`delete-dish-${row.id}`"
+                  @click="removeDish(row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <DishFormDialog
+        v-model="dialogOpen"
+        :editing="editing"
+        :initial-dish="editingDish"
+        :catalog-dishes="ownDishes"
+        :saving="saving"
+        :error-message="dialogError"
+        @submit="handleDialogSubmit"
+      >
+        <template #hint>
+          <p class="admin-dialog-hint">
+            本次提交由服务端校验档口归属，仅作用于「{{ ownStall?.name || stallId }}」。
+          </p>
+        </template>
+      </DishFormDialog>
+    </div>
+  </OrderShell>
 </template>
 
 <style scoped>

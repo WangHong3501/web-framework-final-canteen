@@ -1,4 +1,8 @@
-export const DISH_CATEGORIES = ['家常小炒', '面食米线', '轻食蔬菜', '风味套餐']
+import taxonomy from '../../shared/dish-taxonomy.json' with { type: 'json' }
+
+export const DISH_CATEGORIES = taxonomy.categories
+export const DISH_CUISINES = taxonomy.cuisines
+export const DEFAULT_CUISINE = taxonomy.defaultCuisine
 
 export const DISH_MEALS = [
   { key: 'all', label: '全部餐次', icon: 'Utensils' },
@@ -104,7 +108,14 @@ export function statusLabel(status) {
 
 export function filterDishList(
   dishes = [],
-  { meal = 'all', stallId = 'all', category = '全部', keyword = '', status = 'all' } = {},
+  {
+    meal = 'all',
+    stallId = 'all',
+    category = '全部',
+    cuisine = '全部',
+    keyword = '',
+    status = 'all',
+  } = {},
 ) {
   const list = Array.isArray(dishes) ? dishes : []
   const term = String(keyword || '')
@@ -114,9 +125,11 @@ export function filterDishList(
     if (meal && meal !== 'all' && dish.meal !== meal) return false
     if (stallId && stallId !== 'all' && String(dish.stallId) !== String(stallId)) return false
     if (category && category !== '全部' && dish.category !== category) return false
+    const dishCuisine = dish.cuisine || DEFAULT_CUISINE
+    if (cuisine && cuisine !== '全部' && dishCuisine !== cuisine) return false
     if (status && status !== 'all' && dish.status !== status) return false
     if (!term) return true
-    return [dish.name, dish.desc, dish.stall, dish.category].some((value) =>
+    return [dish.name, dish.desc, dish.stall, dish.category, dishCuisine].some((value) =>
       String(value || '')
         .toLowerCase()
         .includes(term),
@@ -139,6 +152,7 @@ export function buildDishPayload(form = {}) {
       : [],
     spice: Number.isInteger(Number(form.spice)) ? Math.min(3, Math.max(0, Number(form.spice))) : 0,
   }
+  if (DISH_CUISINES.includes(form.cuisine)) payload.cuisine = form.cuisine
   const hasOriginal =
     form.originalPrice !== '' &&
     form.originalPrice !== null &&

@@ -1,13 +1,16 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
-import { DEFAULT_DESTINATION, safeDestination, routeAllowsRole } from './policy'
+import { safeDestination, routeAllowsRole } from './policy'
 
 const router = createRouter({
   history: createWebHashHistory(),
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.path !== from.path) return { top: 0 }
+  },
   routes: [
-    { path: '/', redirect: DEFAULT_DESTINATION },
+    { path: '/', redirect: { name: 'login' } },
     {
       path: '/login',
       name: 'login',
@@ -17,8 +20,8 @@ const router = createRouter({
     {
       path: '/center',
       component: () => import('@/views/center/CenterLayout.vue'),
-      meta: { requiresAuth: true },
-      redirect: DEFAULT_DESTINATION,
+      meta: { requiresAuth: true, section: 'account' },
+      redirect: { name: 'overview' },
       children: [
         {
           path: 'overview',
@@ -50,49 +53,49 @@ const router = createRouter({
       path: '/menu',
       name: 'menu',
       component: () => import('@/views/order/MenuView.vue'),
-      meta: { title: '校园菜单', requiresAuth: true },
+      meta: { title: '校园菜单', requiresAuth: true, section: 'menu' },
     },
     {
       path: '/dish/:id',
       name: 'dish-detail',
       component: () => import('@/views/order/DishDetailView.vue'),
-      meta: { title: '菜品详情', requiresAuth: true },
+      meta: { title: '菜品详情', requiresAuth: true, section: 'menu' },
     },
     {
       path: '/cart',
       name: 'cart',
       component: () => import('@/views/order/CartView.vue'),
-      meta: { title: '确认订单', requiresAuth: true, roles: ['student'] },
+      meta: { title: '餐车', requiresAuth: true, roles: ['student'], section: 'cart' },
     },
     {
       path: '/orders',
       name: 'orders',
       component: () => import('@/views/order/OrdersView.vue'),
-      meta: { title: '我的订单', requiresAuth: true },
+      meta: { title: '订单', requiresAuth: true, section: 'orders' },
     },
     {
       path: '/order/:id',
       name: 'order-detail',
       component: () => import('@/views/order/OrderDetailView.vue'),
-      meta: { title: '订单详情', requiresAuth: true },
+      meta: { title: '订单详情', requiresAuth: true, section: 'orders' },
     },
     {
       path: '/mobile',
       name: 'mobile-order',
-      component: () => import('@/views/mobile/MobileOrderView.vue'),
-      meta: { title: '移动端点餐', requiresAuth: true, roles: ['student'] },
+      component: () => import('@/views/order/MenuView.vue'),
+      meta: { title: '校园菜单', requiresAuth: true, roles: ['student'], section: 'menu' },
     },
     {
       path: '/admin/overview',
       name: 'admin-overview',
       component: () => import('@/views/order/AdminDashboardView.vue'),
-      meta: { title: '经营概览', requiresAuth: true, roles: ['merchant'] },
+      meta: { title: '经营概览', requiresAuth: true, roles: ['merchant'], section: 'business' },
     },
     {
       path: '/admin/dishes',
       name: 'admin-dishes',
       component: () => import('@/views/order/AdminDishesView.vue'),
-      meta: { title: '档口管理', requiresAuth: true, roles: ['merchant'] },
+      meta: { title: '菜品管理', requiresAuth: true, roles: ['merchant'], section: 'dishes' },
     },
     {
       path: '/forbidden',
@@ -126,11 +129,17 @@ router.beforeEach(async (to) => {
       if (authenticated) useCartStore().bindAccount(user.user.id)
       if (authenticated && !routeAllowsRole(to.matched, user.user.role))
         return { name: 'forbidden', replace: true }
-      if (authenticated && to.name === 'login') return safeDestination(to.query.redirect)
+      if (authenticated && to.name === 'login')
+        return safeDestination(to.query.redirect, user.user.role)
     } catch {
       return {
         name: 'unavailable',
-        query: { redirect: safeDestination(to.fullPath) },
+        query: {
+          redirect: safeDestination(
+            to.name === 'login' ? to.query.redirect : to.fullPath,
+            user.user?.role,
+          ),
+        },
         replace: true,
       }
     }

@@ -4,9 +4,13 @@ import fs from 'node:fs'
 
 const shots = path.resolve(process.env.SCREENSHOT_DIR || '.local/screenshots')
 fs.mkdirSync(shots, { recursive: true })
-async function demoLogin(page, role = 'student') {
+async function demoLogin(page) {
   await page.goto('/#/login')
-  await page.getByTestId(`demo-${role}`).click()
+  await page.getByTestId('demo-student').click()
+  await expect(page).toHaveURL(/\/menu$/)
+  const nav = page.getByRole('navigation', { name: '主导航' })
+  await expect(nav.getByRole('link')).toHaveText(['点餐', '餐车', '订单', '我的'])
+  await nav.getByRole('link', { name: '我的', exact: true }).click()
   await expect(page).toHaveURL(/\/center\/overview$/)
   await expect(page.getByTestId('account-summary')).toBeVisible()
 }
@@ -39,6 +43,10 @@ test('未登录拦截，登录后返回原来的嵌套页面', async ({ page }) 
   await page.getByTestId('demo-student').click()
   await expect(page).toHaveURL(/\/center\/profile$/)
   await expect(page.getByRole('heading', { name: '每一面，都是你。' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '我的', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  )
 })
 test('登录状态刷新恢复、嵌套路由可切换，个人中心视觉留档', async ({ page }) => {
   await demoLogin(page)
@@ -101,32 +109,45 @@ test('学生越权访问被拦截，伪造会话不能从持久化恢复', async
   await expect(page).toHaveURL(/\/login/)
 })
 test('商家可进入商家入口，退出后后退不能进入受保护页面', async ({ page }) => {
-  await demoLogin(page, 'merchant')
-  await page.goto('/#/admin/dishes')
+  await page.goto('/#/')
+  await page.getByTestId('demo-merchant').click()
+  await expect(page).toHaveURL(/\/orders$/)
+  const nav = page.getByRole('navigation', { name: '主导航' })
+  await expect(nav.getByRole('link')).toHaveText(['订单工作台', '菜品管理', '经营概览', '账号'])
+  await nav.getByRole('link', { name: '菜品管理', exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/dishes$/)
   await expect(page.getByRole('heading', { name: '欢迎来到档口工作台' })).toBeVisible()
-  await page.getByRole('button', { name: '回到个人中心' }).click()
+  await nav.getByRole('link', { name: '账号', exact: true }).click()
+  await expect(page.getByRole('menuitem')).toHaveText([
+    '食光概览',
+    '个人资料',
+    '用餐偏好',
+    '账号安全',
+  ])
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await page
     .locator('.el-message-box')
     .getByRole('button', { name: '退出登录', exact: true })
     .click()
   await expect(page).toHaveURL(/\/login$/)
-  await page.goto('/#/center/security')
+  await page.goBack()
   await expect(page).toHaveURL(/\/login\?redirect=/)
 })
 test('外部 redirect 不会跳出本站，API 断开时清楚报错', async ({ page }) => {
   await page.goto('/#/login?redirect=https://example.com')
   await page.getByTestId('demo-student').click()
-  await expect(page).toHaveURL(/\/center\/overview$/)
+  await expect(page).toHaveURL(/\/menu$/)
   await page.evaluate(() => {
     sessionStorage.clear()
     localStorage.clear()
   })
-  await page.goto('/#/login')
   await page.reload()
+  await expect(page).toHaveURL(/\/login\?redirect=\/menu$/)
+  const loginUrl = page.url()
   await page.route('**/api/auth/login', (route) => route.abort())
   await page.getByTestId('demo-student').click()
   await expect(page.getByRole('alert')).toContainText('暂时无法连接食堂服务')
+  await expect(page).toHaveURL(loginUrl)
 })
 test('本地有效期到达后立即拦截，不依赖缓存的登录态 getter', async ({ page }) => {
   await page.clock.install({ time: new Date() })
@@ -151,6 +172,11 @@ test('移动端 375px、平板 768px 无横向溢出，减少动效可正常登�
   await page.screenshot({ path: path.join(shots, 'G5-04-登录-手机.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByTestId('demo-student').click()
+  await expect(page).toHaveURL(/\/menu$/)
+  await page
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('link', { name: '我的', exact: true })
+    .click()
   await expect(page.getByTestId('account-summary')).toBeVisible()
   await readyForScreenshot(page)
   await page.screenshot({ path: path.join(shots, 'G5-05-个人中心-手机.png'), fullPage: true })

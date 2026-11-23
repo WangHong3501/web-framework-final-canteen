@@ -3,99 +3,6 @@
    只引用设计令牌，双端视觉语言一致，仅布局密度不同。
    ========================================================== */
 
-/* ---------- Hero 横幅 ---------- */
-.order-hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-2xl);
-  background: linear-gradient(
-    118deg,
-    var(--brand-800) 0%,
-    var(--brand-700) 44%,
-    var(--brand-600) 100%
-  );
-  color: var(--white);
-  padding: var(--space-8) var(--space-9);
-  min-height: 208px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  isolation: isolate;
-}
-.order-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 84% 18%, var(--glow-1) 0, transparent 30%),
-    radial-gradient(circle at 8% 92%, var(--on-brand-3) 0, transparent 24%);
-}
-.order-hero::after {
-  content: '';
-  position: absolute;
-  right: -40px;
-  bottom: -70px;
-  width: 260px;
-  height: 260px;
-  border: 1px solid var(--glow-2);
-  border-radius: 50%;
-  z-index: -1;
-  box-shadow:
-    0 0 0 34px var(--glow-3),
-    0 0 0 68px var(--glow-4);
-}
-.order-hero__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-12);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--leaf);
-  font-weight: var(--fw-semibold);
-  margin-bottom: var(--space-3);
-}
-.order-hero__eyebrow::before {
-  content: '';
-  width: 22px;
-  height: 1px;
-  background: currentColor;
-}
-.order-hero h1 {
-  font-size: var(--fs-36);
-  line-height: 1.15;
-  margin: 0 0 var(--space-3);
-  font-weight: var(--fw-semibold);
-  letter-spacing: -0.5px;
-}
-.order-hero p {
-  margin: 0;
-  max-width: 44ch;
-  color: var(--on-brand-1);
-  font-size: var(--fs-14);
-  line-height: var(--lh-body);
-}
-.order-hero__meta {
-  display: flex;
-  gap: var(--space-6);
-  margin-top: var(--space-6);
-}
-.order-hero__meta div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.order-hero__meta strong {
-  font-size: var(--fs-20);
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-}
-.order-hero__meta span {
-  font-size: var(--fs-12);
-  color: var(--on-brand-2);
-}
-
 /* ---------- 区块标题 ---------- */
 .order-section-head {
   display: flex;
@@ -115,20 +22,6 @@
   margin: 0;
   font-size: var(--fs-13);
   color: var(--muted);
-}
-
-/* ---------- 工具条：餐次 + 搜索 ---------- */
-.order-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-2);
 }
 
 /* ---------- 菜品网格 ---------- */
@@ -290,16 +183,6 @@
 }
 
 @media (max-width: 680px) {
-  .order-hero {
-    padding: var(--space-6);
-    min-height: 172px;
-  }
-  .order-hero h1 {
-    font-size: var(--fs-30);
-  }
-  .order-hero__meta {
-    gap: var(--space-5);
-  }
   .order-section-head :is(h1, h2) {
     font-size: var(--fs-20);
   }

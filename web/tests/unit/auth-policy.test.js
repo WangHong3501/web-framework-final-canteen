@@ -23,7 +23,7 @@ test('外部 URL、协议相对 URL 和反斜线不能成为登录跳转目标',
   ])
     assert.equal(safeDestination(value), DEFAULT_DESTINATION)
 })
-test('无效、未开放和自循环目标回到个人概览', () => {
+test('无效、未开放和自循环目标回到当前角色的首页', () => {
   for (const value of [
     null,
     undefined,
@@ -37,8 +37,10 @@ test('无效、未开放和自循环目标回到个人概览', () => {
     '/center/../login',
     '/center/%',
     '/center/' + 'a'.repeat(1001),
-  ])
+  ]) {
     assert.equal(safeDestination(value), DEFAULT_DESTINATION)
+    assert.equal(safeDestination(value, 'merchant'), '/orders')
+  }
 })
 test('父子路由权限同时满足才能进入', () => {
   const records = [{ meta: { roles: ['student', 'merchant'] } }, { meta: { roles: ['merchant'] } }]

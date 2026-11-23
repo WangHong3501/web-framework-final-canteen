@@ -5,12 +5,15 @@ import fs from 'node:fs'
 
 const shots = path.resolve(process.env.SCREENSHOT_DIR || '.local/screenshots')
 fs.mkdirSync(shots, { recursive: true })
+const { dishes: seedDishes } = JSON.parse(
+  fs.readFileSync(new URL('../../db.json', import.meta.url), 'utf8'),
+)
+const merchantDishCount = seedDishes.filter((dish) => dish.stallId === 'stall-1').length
 
 async function demoLogin(page, role = 'student') {
   await page.goto('/#/login')
   await page.getByTestId(`demo-${role}`).click()
-  await expect(page).toHaveURL(/\/center\/overview$/)
-  await expect(page.getByTestId('account-summary')).toBeVisible()
+  await expect(page).toHaveURL(role === 'merchant' ? /\/orders$/ : /\/menu$/)
 }
 
 async function readyForScreenshot(page) {
@@ -32,32 +35,56 @@ async function assertAccessible(page, label) {
 
 test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车联动', async ({ page }) => {
   await demoLogin(page, 'student')
-  await page.goto('/#/menu')
   await expect(page.getByTestId('menu-dish-grid')).toBeVisible()
-  await expect(page.locator('.food-card')).toHaveCount(12)
+  await expect(page.locator('.food-card')).toHaveCount(seedDishes.length)
   await expect(page.getByRole('button', { name: '将糖醋里脊加入餐车' })).toBeDisabled()
 
   await readyForScreenshot(page)
   await assertAccessible(page, 'menu')
-  await page.screenshot({ path: path.join(shots, 'G5-15-菜单档口切换-桌面.png'), fullPage: true })
+  await page.screenshot({ path: path.join(shots, 'G5-15-菜单档口切换-桌面.png') })
+
+  const cuisine = page.getByLabel('菜系', { exact: true })
+  await cuisine.selectOption('闽菜')
+  await expect(page.locator('.food-card')).toHaveCount(
+    seedDishes.filter((dish) => dish.cuisine === '闽菜').length,
+  )
+  await page.getByRole('button', { name: '查看福州荔枝肉详情' }).click()
+  await expect(page.getByRole('heading', { name: '福州荔枝肉' })).toBeVisible()
+  await page.getByRole('link', { name: '返回菜单', exact: true }).click()
+  await expect(cuisine).toHaveValue('闽菜')
+  await cuisine.selectOption('全部')
 
   await page.getByRole('tab', { name: /麦香面馆/ }).click()
-  await expect(page.locator('.food-card')).toHaveCount(3)
+  await expect(page.locator('.food-card')).toHaveCount(
+    seedDishes.filter((dish) => dish.stallId === 'stall-2').length,
+  )
 
   await page.getByRole('tab', { name: '全部档口', exact: true }).click()
   await page.getByRole('tab', { name: '早餐', exact: true }).click()
-  await expect(page.locator('.food-card')).toHaveCount(3)
+  await expect(page.locator('.food-card')).toHaveCount(
+    seedDishes.filter((dish) => dish.meal === 'breakfast').length,
+  )
 
   await page.getByRole('tab', { name: '全部餐次', exact: true }).click()
-  await page.getByRole('tab', { name: '家常小炒', exact: true }).click()
+  await page.getByLabel('菜品分类').selectOption('家常小炒')
   await page.getByLabel('搜索菜名、档口或描述').fill('红烧肉')
   await expect(page.locator('.food-card')).toHaveCount(1)
   await expect(page.getByTestId('menu-dish-dish-01')).toBeVisible()
+  await page.getByRole('button', { name: '查看招牌红烧肉饭详情' }).click()
+  await expect(page).toHaveURL(/\/dish\/dish-01\?/)
+  await expect(page.getByRole('link', { name: '点餐', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  )
+  await page.getByRole('link', { name: '返回菜单', exact: true }).click()
+  await expect(page.getByLabel('搜索菜名、档口或描述')).toHaveValue('红烧肉')
+  await expect(page.getByLabel('菜品分类')).toHaveValue('家常小炒')
+  await expect(page.locator('.food-card')).toHaveCount(1)
 
   await page.getByLabel('搜索菜名、档口或描述').fill('不存在的测试菜品')
   await expect(page.getByRole('heading', { name: '换个条件试试看' })).toBeVisible()
   await page.getByRole('button', { name: '重置筛选' }).click()
-  await expect(page.locator('.food-card')).toHaveCount(12)
+  await expect(page.locator('.food-card')).toHaveCount(seedDishes.length)
 
   await page.getByRole('button', { name: '将招牌红烧肉饭加入餐车' }).click()
   await expect(page.getByTestId('menu-cart-bar')).toContainText('已选 1 件')
@@ -67,7 +94,6 @@ test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车�
 
 test('菜品详情动态路由可正常加载、加车与切换推荐，非法参数给出友好反馈', async ({ page }) => {
   await demoLogin(page, 'student')
-  await page.goto('/#/menu')
   await page.getByRole('button', { name: '查看招牌红烧肉饭详情' }).click()
   await expect(page).toHaveURL(/\/dish\/dish-01$/)
   await expect(page.getByRole('heading', { name: '招牌红烧肉饭' })).toBeVisible()
@@ -96,13 +122,25 @@ test('菜品详情动态路由可正常加载、加车与切换推荐，非法�
 
 test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增删改回读', async ({ page }) => {
   await demoLogin(page, 'merchant')
-  await page.goto('/#/admin/dishes')
+  await page
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('link', { name: '菜品管理' })
+    .click()
   await expect(page.getByRole('heading', { name: '欢迎来到档口工作台' })).toBeVisible()
-  await expect(page.getByTestId('metric-total')).toHaveText('5')
+  await expect(page.getByTestId('metric-total')).toHaveText(String(merchantDishCount))
 
   await readyForScreenshot(page)
   await assertAccessible(page, 'admin-dishes')
   await page.screenshot({ path: path.join(shots, 'G5-17-档口菜品管理-桌面.png'), fullPage: true })
+
+  await page.getByRole('link', { name: '招牌红烧肉饭', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '招牌红烧肉饭' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '菜品管理', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  )
+  await page.getByRole('link', { name: '返回菜品管理', exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/dishes$/)
 
   const soldDish = page.locator('tr', { hasText: '糖醋里脊' })
   await soldDish.getByRole('button', { name: '下架' }).click()
@@ -134,7 +172,7 @@ test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增�
 
   await dialog.getByTestId('save-dish-btn').click()
   await expect(page.getByText('菜品已新增')).toBeVisible()
-  await expect(page.getByTestId('metric-total')).toHaveText('6')
+  await expect(page.getByTestId('metric-total')).toHaveText(String(merchantDishCount + 1))
   await page.reload()
   const createdRow = page.locator('tr', { hasText: '清炒时蔬套餐' })
   await expect(createdRow).toBeVisible()
@@ -155,20 +193,32 @@ test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增�
   await page.locator('.el-message-box').getByRole('button', { name: '确认删除' }).click()
   await expect(page.getByText('菜品已删除')).toBeVisible()
   await page.reload()
-  await expect(page.getByTestId('metric-total')).toHaveText('5')
+  await expect(page.getByTestId('metric-total')).toHaveText(String(merchantDishCount))
   await expect(page.locator('tr', { hasText: '清炒时蔬套餐' })).toHaveCount(0)
 })
 
 test('移动端 375px 下菜单页与详情页无横向溢出', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await demoLogin(page, 'student')
-  await page.goto('/#/menu')
-  await expect(page.getByTestId('menu-dish-grid')).toBeVisible()
+  await expect(page.locator('.m-dish')).toHaveCount(seedDishes.length)
   await readyForScreenshot(page)
-  await page.screenshot({ path: path.join(shots, 'G5-19-菜单详情-手机.png'), fullPage: true })
+  await page.screenshot({ path: path.join(shots, 'G5-19-菜单详情-手机.png') })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 
-  await page.goto('/#/dish/dish-01')
-  await expect(page.getByRole('heading', { name: '招牌红烧肉饭' })).toBeVisible()
+  const stalls = page.getByRole('combobox', { name: '食堂档口' })
+  await stalls.selectOption({ label: '青禾小厨' })
+  await expect(page.locator('.m-dish')).toHaveCount(merchantDishCount)
+  const cuisine = page.getByLabel('菜系', { exact: true })
+  await cuisine.selectOption('粤菜')
+  const cantoneseDishes = seedDishes.filter(
+    (dish) => dish.stallId === 'stall-1' && dish.cuisine === '粤菜',
+  )
+  await expect(page.locator('.m-dish')).toHaveCount(cantoneseDishes.length)
+  await page.getByRole('button', { name: '查看香菇滑鸡饭详情' }).click()
+  await expect(page.getByRole('heading', { name: '香菇滑鸡饭' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.getByRole('link', { name: '返回菜单', exact: true }).click()
+  await expect(page.locator('.m-dish')).toHaveCount(cantoneseDishes.length)
+  await expect(stalls.locator('option:checked')).toHaveText('青禾小厨')
+  await expect(cuisine).toHaveValue('粤菜')
 })

@@ -115,6 +115,11 @@ try {
   await page.getByText('在此设备上保持登录', { exact: true }).click()
   await expect(page.getByRole('checkbox', { name: '在此设备上保持登录' })).toBeChecked()
   await page.getByTestId('demo-student').click()
+  await expect(page).toHaveURL(/\/menu$/)
+  await page
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('link', { name: '我的', exact: true })
+    .click()
   await expect(page.getByTestId('account-summary')).toBeVisible()
   await expect(page.locator('.el-message')).toHaveCount(0)
   await page.evaluate(() => document.fonts.ready)

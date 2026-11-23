@@ -1,11 +1,16 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import database from '../../server/db.cjs'
 import { startApi, TEST_MERCHANT, TEST_STUDENT } from './helpers/api-harness.mjs'
 
 let api
 let student
 let merchant
 let secondStudent
+const { dishes: seedDishes } = JSON.parse(
+  fs.readFileSync(new URL('../../db.json', import.meta.url), 'utf8'),
+)
 
 before(async () => {
   api = await startApi({
@@ -50,7 +55,8 @@ test('未登录不能读取任何业务目录', async () => {
 test('登录后可读菜品与档口，字段和枚举保持种子约定', async () => {
   const dishes = await api.request('/dishes', { token: student })
   assert.equal(dishes.status, 200)
-  assert.equal(dishes.body.length, 12)
+  assert.equal(dishes.body.length, seedDishes.length)
+  assert.ok(dishes.body.some((dish) => dish.cuisine === '闽菜' && dish.name === '福州荔枝肉'))
   for (const dish of dishes.body) {
     assert.ok(dish.id && dish.name && dish.stallId)
     assert.ok(['success', 'warning', 'danger'].includes(dish.status))
@@ -71,9 +77,10 @@ test('商家新增菜品只会写入本档口和托管字段', async () => {
     method: 'POST',
     token: merchant,
     body: {
-      name: '  测试小炒  ',
+      name: '  测试汤羹  ',
       price: 12.5,
-      category: '家常小炒',
+      category: '汤羹粥品',
+      cuisine: '粤菜',
       meal: 'lunch',
       desc: '集成测试',
     },
@@ -81,7 +88,9 @@ test('商家新增菜品只会写入本档口和托管字段', async () => {
   assert.equal(response.status, 201)
   const dish = response.body
   assert.match(dish.id, /^dish-\d{2}$/)
-  assert.equal(dish.name, '测试小炒')
+  assert.equal(dish.name, '测试汤羹')
+  assert.equal(dish.cuisine, '粤菜')
+  assert.equal(dish.category, '汤羹粥品')
   assert.equal(dish.stallId, 'stall-1')
   assert.equal(dish.stall, '青禾小厨')
   assert.equal(dish.rating, 0)
@@ -91,6 +100,42 @@ test('商家新增菜品只会写入本档口和托管字段', async () => {
   const read = await api.request(`/dishes/${dish.id}`, { token: student })
   assert.equal(read.status, 200)
   assert.equal(read.body.price, 12.5)
+  assert.equal(read.body.cuisine, '粤菜')
+})
+
+test('旧运行库追加新种子菜品，保留历史订单和人工修改的菜品', async () => {
+  let orderSnapshot
+  const legacy = await startApi({
+    mutateSeed(seed) {
+      delete seed.catalog
+      seed.dishes = seed.dishes.filter(
+        (dish) => !dish.id.startsWith('dish-seed-') && dish.id !== 'dish-11',
+      )
+      for (const dish of seed.dishes) delete dish.cuisine
+      seed.dishes[0].price = 15
+      seed.dishes.push({ ...seed.dishes[0], id: 'dish-13', name: '档口自建菜品' })
+      orderSnapshot = structuredClone(seed.orders)
+    },
+  })
+  try {
+    const upgraded = JSON.parse(fs.readFileSync(legacy.dbFile, 'utf8'))
+    assert.deepEqual(upgraded.orders, orderSnapshot)
+    assert.equal(upgraded.dishes.find((dish) => dish.id === 'dish-01').price, 15)
+    assert.equal(upgraded.dishes.find((dish) => dish.id === 'dish-13').name, '档口自建菜品')
+    assert.equal(upgraded.dishes.find((dish) => dish.id === 'dish-04').cuisine, '川菜')
+    assert.equal(
+      upgraded.dishes.some((dish) => dish.id === 'dish-11'),
+      false,
+    )
+    assert.equal(upgraded.dishes.length, seedDishes.length)
+    upgraded.dishes = upgraded.dishes.filter((dish) => dish.id !== 'dish-seed-13')
+    fs.writeFileSync(legacy.dbFile, JSON.stringify(upgraded))
+    database.prepareDatabase(legacy.dbFile)
+    const restarted = JSON.parse(fs.readFileSync(legacy.dbFile, 'utf8'))
+    assert.deepEqual(restarted.dishes, upgraded.dishes)
+  } finally {
+    await legacy.close()
+  }
 })
 
 test('菜品写接口拒绝未知字段、非法枚举和跨档口新增', async () => {
@@ -396,10 +441,21 @@ test('目录查询参数可过滤，非法枚举返回 422', async () => {
   const stall = await api.request('/dishes?stallId=stall-2', { token: student })
   assert.ok(stall.body.every((dish) => dish.stallId === 'stall-2'))
 
+  const fujianBreakfast = await api.request(
+    `/dishes?cuisine=${encodeURIComponent('闽菜')}&meal=breakfast`,
+    { token: student },
+  )
+  assert.equal(fujianBreakfast.status, 200)
+  assert.deepEqual(
+    fujianBreakfast.body.map((dish) => dish.name),
+    ['泉州面线糊'],
+  )
+
   const search = await api.request(`/dishes?q=${encodeURIComponent('拉面')}`, { token: student })
   assert.ok(search.body.some((dish) => dish.name.includes('拉面')))
 
   assert.equal((await api.request('/dishes?meal=brunch', { token: student })).status, 422)
+  assert.equal((await api.request('/dishes?cuisine=unknown', { token: student })).status, 422)
   assert.equal((await api.request('/orders?status=unknown', { token: student })).status, 422)
 })
 

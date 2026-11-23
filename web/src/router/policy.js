@@ -1,21 +1,26 @@
-export const DEFAULT_DESTINATION = '/center/overview'
+export const DEFAULT_DESTINATION = '/menu'
 
-export function safeDestination(value) {
-  if (typeof value !== 'string' || value.length > 1000) return DEFAULT_DESTINATION
+export function homeDestination(role) {
+  return role === 'merchant' ? '/orders' : DEFAULT_DESTINATION
+}
+
+export function safeDestination(value, role) {
+  const fallback = homeDestination(role)
+  if (typeof value !== 'string' || value.length > 1000) return fallback
   let decoded
   try {
     decoded = decodeURIComponent(value)
   } catch {
-    return DEFAULT_DESTINATION
+    return fallback
   }
-  if (/[\\\u0000-\u001f]/.test(decoded) || decoded.startsWith('//')) return DEFAULT_DESTINATION
+  if (/[\\\u0000-\u001f]/.test(decoded) || decoded.startsWith('//')) return fallback
   if (
     !/^\/(?:center(?:\/|\?|$)|menu(?:\?|$)|cart(?:\?|$)|dish\/|orders(?:\?|$)|order\/|mobile(?:\?|$)|admin\/(?:overview|dishes)(?:\?|$))/.test(
       decoded,
     )
   )
-    return DEFAULT_DESTINATION
-  if (decoded.split('?')[0].split('/').includes('..')) return DEFAULT_DESTINATION
+    return fallback
+  if (decoded.split('?')[0].split('/').includes('..')) return fallback
   return value
 }
 

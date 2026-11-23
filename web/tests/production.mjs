@@ -5,6 +5,9 @@ import { once } from 'node:events'
 import { chromium, expect } from '@playwright/test'
 import production from '../server/serve.cjs'
 
+const { dishes: seedDishes } = JSON.parse(
+  fs.readFileSync(new URL('../db.json', import.meta.url), 'utf8'),
+)
 const dir = path.resolve('.local')
 fs.mkdirSync(dir, { recursive: true })
 const data = fs.mkdtempSync(path.join(dir, 'production-'))
@@ -40,7 +43,7 @@ try {
   })
   await page.goto(base + '/#/login?redirect=/menu')
   await page.getByTestId('demo-student').click()
-  await expect(page.locator('.food-card')).toHaveCount(12)
+  await expect(page.locator('.food-card')).toHaveCount(seedDishes.length)
   await page.evaluate(async () => {
     await document.fonts.ready
     await Promise.all(
@@ -54,10 +57,14 @@ try {
     await page
       .locator('.food-card img')
       .evaluateAll((imgs) => new Set(imgs.map((img) => img.currentSrc)).size),
-    12,
+    seedDishes.length,
   )
+  const cuisine = page.getByLabel('菜系', { exact: true })
+  await cuisine.selectOption('闽菜')
+  await expect(page.getByRole('heading', { name: '福州荔枝肉' })).toBeVisible()
   await capture(page, 'G5-08-菜单-桌面.png')
-  await page.getByRole('button', { name: '将招牌红烧肉饭加入餐车' }).click()
+  await cuisine.selectOption('川菜')
+  await page.getByRole('button', { name: '将川味回锅肉加入餐车' }).click()
   await page.goto(base + '/#/cart')
   await page.getByRole('button', { name: /提交订单/ }).click()
   await expect(page).toHaveURL(/#\/order\/SG/)
@@ -68,8 +75,13 @@ try {
   await expect(page.locator('.order-row').first()).toContainText(orderId)
   await capture(page, 'G5-11-订单-桌面.png')
   await page.goto(base + '/#/mobile')
-  await expect(page.locator('.m-dish').first()).toBeVisible()
+  const phone = page.getByRole('region', { name: '移动端演示' })
+  await expect(phone.locator('.m-dish').first()).toBeVisible()
   await capture(page, 'G5-09-移动点餐-预览.png')
+  await phone.getByRole('button', { name: '增加招牌红烧肉饭', exact: true }).click()
+  await phone.getByRole('button', { name: '去结算', exact: true }).click()
+  await expect(page).toHaveURL(/\/cart\?preview=phone$/)
+  await expect(phone.getByRole('button', { name: '提交订单', exact: true })).toBeVisible()
   const merchant = await browser.newContext({
     viewport: { width: 1440, height: 960 },
     reducedMotion: 'reduce',
@@ -84,14 +96,14 @@ try {
   await capture(workbench, 'G5-13-订单工作台-管理员.png')
   await page.goto(base + '/#/order/' + orderId)
   await page.getByRole('button', { name: '我已取餐' }).click()
-  await page.getByRole('button', { name: '招牌红烧肉饭 4 星' }).click()
+  await page.getByRole('button', { name: '川味回锅肉 4 星' }).click()
   await expect(page.getByText('已评 4 星')).toBeVisible()
-  await page.goto(base + '/#/dish/dish-01')
+  await page.goto(base + '/#/dish/dish-seed-37')
   await expect(page.getByText('4 分 · 1 条评价')).toBeVisible()
   assert.deepEqual(errors, [])
   assert.deepEqual(requestErrors, [])
   console.log(
-    'PASS 同源生产服务：静态资源、权限、12 张菜单图、hash 刷新、创建订单、商家通知、确认取餐、评价回读',
+    `PASS 同源生产服务：静态资源、权限、${seedDishes.length} 张菜单图、菜系筛选、hash 刷新、新菜下单、商家通知、确认取餐、评价回读`,
   )
 } finally {
   await browser?.close()

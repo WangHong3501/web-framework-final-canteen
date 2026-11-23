@@ -3,33 +3,21 @@ import './account.css'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { mapStores } from 'pinia'
 import { useUserStore } from '@/stores/user'
-import BrandMark from '@/components/ui/BrandMark.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
+
+const accountLinks = [
+  { path: '/center/overview', label: '食光概览', icon: 'LayoutDashboard' },
+  { path: '/center/profile', label: '个人资料', icon: 'UserRound' },
+  { path: '/center/preferences', label: '用餐偏好', icon: 'SlidersHorizontal' },
+  { path: '/center/security', label: '账号安全', icon: 'ShieldCheck' },
+]
+
 export default {
-  components: { BrandMark, AppIcon, UserAvatar },
-  data() {
-    return {
-      helpOpen: false,
-      baseLinks: [
-        { path: '/center/overview', label: '食光概览', icon: 'LayoutDashboard' },
-        { path: '/center/profile', label: '个人资料', icon: 'UserRound' },
-        { path: '/center/preferences', label: '用餐偏好', icon: 'SlidersHorizontal' },
-        { path: '/center/security', label: '账号安全', icon: 'ShieldCheck' },
-      ],
-    }
-  },
+  components: { AppIcon, UserAvatar },
+  data: () => ({ helpOpen: false, accountLinks }),
   computed: {
     ...mapStores(useUserStore),
-    links() {
-      if (!this.userStore.isMerchant) return this.baseLinks
-      return [
-        this.baseLinks[0],
-        { path: '/admin/overview', label: '经营概览', icon: 'LayoutDashboard' },
-        { path: '/admin/dishes', label: '档口管理', icon: 'Store' },
-        ...this.baseLinks.slice(1),
-      ]
-    },
     user() {
       return this.userStore.user || {}
     },
@@ -61,35 +49,6 @@ export default {
 </script>
 <template>
   <div class="account-app">
-    <a
-      href="#account-content"
-      class="skip-link"
-      @click.prevent="$el.querySelector('#account-content').focus()"
-      >跳到页面内容</a
-    >
-    <header class="app-header">
-      <div class="app-header__inner">
-        <router-link to="/center/overview" aria-label="食光校园首页" class="brand-link"
-          ><BrandMark compact
-        /></router-link>
-        <nav class="top-nav" aria-label="主导航">
-          <router-link to="/menu">校园菜单</router-link
-          ><router-link to="/orders">{{
-            userStore.isMerchant ? '订单工作台' : '我的订单'
-          }}</router-link
-          ><router-link to="/center/overview" class="top-nav__link--muted">我的食光</router-link
-          ><button type="button" @click="helpOpen = true">用餐帮助</button>
-        </nav>
-        <div class="header-identity">
-          <span class="canteen-label"><AppIcon name="MapPin" :size="16" />{{ user.canteen }}</span
-          ><button type="button" class="header-user" @click="$router.push('/center/profile')">
-            <UserAvatar :name="userStore.displayName" :tone="user.avatarTone" :size="34" /><span>{{
-              userStore.displayName
-            }}</span>
-          </button>
-        </div>
-      </div>
-    </header>
     <el-container class="account-shell">
       <el-aside class="account-aside" width="224px"
         ><div class="sidebar-identity">
@@ -102,36 +61,29 @@ export default {
           >
           <p>{{ user.studentId || user.account }}</p>
         </div>
-        <el-menu :default-active="$route.path" router class="account-menu" aria-label="个人中心导航"
-          ><el-menu-item v-for="link in links" :key="link.path" :index="link.path"
+        <el-menu :default-active="$route.path" router class="account-menu" aria-label="账号设置"
+          ><el-menu-item v-for="link in accountLinks" :key="link.path" :index="link.path"
             ><AppIcon :name="link.icon" :size="19" /><span>{{ link.label }}</span
             ><AppIcon class="nav-chevron" name="ChevronRight" :size="15" /></el-menu-item
         ></el-menu>
-        <div class="sidebar-bottom">
-          <div class="sidebar-quote">
-            <AppIcon name="Leaf" :size="23" />
-            <p>生活再忙，<br />也记得好好吃饭。</p>
-            <span>食光，与你同在。</span>
-          </div>
-          <button type="button" class="logout-button" @click="logout">
+        <div class="account-actions">
+          <button type="button" @click="helpOpen = true">
+            <AppIcon name="CircleHelp" :size="18" />使用帮助
+          </button>
+          <button type="button" @click="logout">
             <AppIcon name="LogOut" :size="18" />退出登录
           </button>
         </div>
       </el-aside>
-      <el-main id="account-content" tabindex="-1" class="account-content"><router-view /></el-main>
+      <div class="account-content"><router-view /></div>
     </el-container>
-    <footer class="app-footer">
-      <span>食光校园</span><span>让每一餐都有好食光</span
-      ><button type="button" @click="helpOpen = true">使用帮助</button>
-    </footer>
-    <el-dialog v-model="helpOpen" title="让校园用餐更从容" width="460px"
+    <el-dialog v-model="helpOpen" title="使用帮助" width="min(460px, calc(100% - 32px))"
       ><div class="help-content">
-        <p>在“个人资料”管理昵称与常去食堂，在“用餐偏好”记录喜欢的口味与食材。</p>
-        <p>进入“账号安全”可以修改密码或退出当前账户。下单后请以订单中的实际取餐信息为准。</p>
-        <p>如遇登录或账户问题，请联系学校账户管理员。</p>
+        <p>下单后在「订单」查看备餐进度、取餐窗口和取餐码。</p>
+        <p>在「账号安全」可以修改密码或退出所有设备。遇到账号问题，请联系学校账户管理员。</p>
       </div>
       <template #footer
-        ><el-button type="primary" @click="helpOpen = false">继续我的食光</el-button></template
+        ><el-button type="primary" @click="helpOpen = false">关闭</el-button></template
       ></el-dialog
     >
   </div>

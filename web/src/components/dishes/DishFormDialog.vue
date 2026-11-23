@@ -3,6 +3,8 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import {
   DISH_BADGE_OPTIONS,
   DISH_CATEGORIES,
+  DISH_CUISINES,
+  DEFAULT_CUISINE,
   DISH_IMAGE_OPTIONS,
   DISH_MEALS,
   DISH_SPICE_OPTIONS,
@@ -17,6 +19,7 @@ function createBlankForm() {
     price: '',
     originalPrice: '',
     category: DISH_CATEGORIES[0],
+    cuisine: DEFAULT_CUISINE,
     meal: 'lunch',
     status: 'success',
     spice: 0,
@@ -32,6 +35,7 @@ export default {
     modelValue: { type: Boolean, default: false },
     editing: { type: Boolean, default: false },
     initialDish: { type: Object, default: null },
+    catalogDishes: { type: Array, default: () => [] },
     saving: { type: Boolean, default: false },
     errorMessage: { type: String, default: '' },
   },
@@ -62,10 +66,10 @@ export default {
       assetBase: import.meta.env.BASE_URL,
       form: createBlankForm(),
       categories: DISH_CATEGORIES,
+      cuisines: DISH_CUISINES,
       mealOptions: DISH_MEALS.filter((item) => item.key !== 'all'),
       statusOptions: DISH_STATUS_OPTIONS,
       spiceOptions: DISH_SPICE_OPTIONS,
-      imageOptions: DISH_IMAGE_OPTIONS,
       badgeOptions: DISH_BADGE_OPTIONS,
       rules: {
         name: [
@@ -85,6 +89,14 @@ export default {
     }
   },
   computed: {
+    imageOptions() {
+      const images = new Map(DISH_IMAGE_OPTIONS.map((option) => [option.value, option]))
+      for (const dish of this.catalogDishes) {
+        if (dish.image && !images.has(dish.image))
+          images.set(dish.image, { value: dish.image, label: dish.name })
+      }
+      return [...images.values()]
+    },
     dialogTitle() {
       return this.editing ? '编辑档口菜品' : '新增档口菜品'
     },
@@ -120,6 +132,7 @@ export default {
               ? String(this.initialDish.originalPrice)
               : '',
           category: this.initialDish.category || DISH_CATEGORIES[0],
+          cuisine: this.initialDish.cuisine || DEFAULT_CUISINE,
           meal: this.initialDish.meal || 'lunch',
           status: this.initialDish.status || 'success',
           spice: Number.isInteger(Number(this.initialDish.spice))
@@ -190,6 +203,12 @@ export default {
           </el-select>
         </el-form-item>
 
+        <el-form-item label="菜系" prop="cuisine">
+          <el-select v-model="form.cuisine">
+            <el-option v-for="item in cuisines" :key="item" :label="item" :value="item" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="当前售价（元）" prop="price">
           <el-input v-model="form.price" placeholder="例如：16.50" />
         </el-form-item>
@@ -228,7 +247,7 @@ export default {
 
       <div class="dish-dialog-image-row">
         <el-form-item label="展示配图" prop="image" class="dish-dialog-image-select">
-          <el-select v-model="form.image" placeholder="请选择菜品实景配图">
+          <el-select v-model="form.image" filterable placeholder="请选择菜品配图">
             <el-option
               v-for="item in imageOptions"
               :key="item.value"

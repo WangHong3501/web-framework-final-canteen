@@ -56,10 +56,10 @@
 
 | 路由 | 访问角色 | 页面职责 |
 | --- | --- | --- |
-| `/`、`/login` | 访客、已登录用户 | 默认前往个人概览；登录后回到经过校验的站内目标。 |
+| `/`、`/login` | 访客、已登录用户 | 有合法的站内目标时登录回跳，否则学生进入菜单、商家进入订单工作台。 |
 | `/center/{overview,profile,preferences,security}` | 两种角色 | CenterLayout 挂载二级 router-view，分别负责摘要、资料、用餐偏好和账号安全。 |
-| `/menu`、`/dish/:id` | 两种角色 | 组合筛选、动态详情和同档口推荐。 |
-| `/cart`、`/mobile` | 学生 | 分档口结算与 Vant 移动点餐。 |
+| `/menu`、`/dish/:id` | 两种角色 | 组合筛选、动态详情和同档口推荐。学生在窄屏使用 Vant 菜单，详情返回时保留菜单筛选。 |
+| `/cart`、`/mobile` | 学生 | 分档口结算、手机壳演示。手机与桌面复用餐车与订单页面。 |
 | `/orders`、`/order/:id` | 两种角色 | 订单列表与详情，按会话和归属决定可见数据和操作。 |
 | `/admin/dishes`、`/admin/overview` | 档口商家 | 菜品管理及本档口经营指标。 |
 | `/forbidden`、`/service-unavailable`、未知路径 | 公开状态页 | 权限提示、断网重试、找不到页面，由 StatusView 承载。 |
@@ -67,16 +67,16 @@
 主要组件的实际组合如下。页面均由 [router/index.js](../web/src/router/index.js) 加载。
 
 ```text
-App / RouterView
+App → AppNavigation（按角色渲染主导航）/ RouterView
 ├─ LoginView
 ├─ CenterLayout / RouterView → OverviewView、ProfileView、PreferencesView、SecurityView
-├─ MenuView → DishTopBar、DishStallTabs、MealSwitch、FoodCard → PriceTag / StatusTag
-├─ DishDetailView → DishTopBar、DishRelatedGrid
-├─ AdminDishesView → DishTopBar、DishFormDialog、Element Plus Table
-├─ CartView / OrdersView / OrderDetailView / AdminDashboardView → OrderShell → DishTopBar + slot
-│  ├─ CartView → StallPicker
-│  └─ OrderDetailView → OrderStatusFlow、PickupCode、PriceTag
-└─ MobileOrderView → PhoneFrame、Tabs、Stepper、SubmitBar、Dialog → StallPicker
+├─ MenuView → DishStallTabs、MealSwitch、FoodCard（桌面）/ MobileOrderView（移动）
+│  └─ MobileOrderView → Tabs、Stepper、SubmitBar，桌面演示以 PhoneFrame 包裹
+├─ DishDetailView → DishRelatedGrid
+├─ AdminDishesView → DishFormDialog、Element Plus Table
+└─ CartView / OrdersView / OrderDetailView / AdminDashboardView → OrderShell + slot
+   ├─ CartView → StallPicker，移动结算使用 Vant SubmitBar 与清空确认
+   └─ OrderDetailView → OrderStatusFlow、PickupCode、PriceTag
 ```
 
 | 数据与边界 | 权威来源与契约 |
@@ -88,6 +88,8 @@ App / RouterView
 | 调用链 | 页面 → 领域 API → Axios 实例 → json-server 业务接口 → 运行库。生产环境同源前缀为 `/api`。具体参数、错误码、旧字段兼容见 [接口契约](./api-contract.md)。 |
 
 ## 实测与构建对照
+
+下表记录 `7c4bf0a` 时的 12 道菜版本。当前 60 道菜版本的运行方式与复验结果见 [README](../README.md)。
 
 同一台 Windows x64 主机、Node.js 22.23.2、npm 10.9.8、Vite 8.3.8。基线从 `f4edce6` 独立还原，终版另做锁文件全新安装与构建。体积是 dist 内实际字节数，gzip 为对各 JS 文件分别压缩后求和。用 `npm run build` 和 `node scripts/measure-dist.mjs` 可复查。
 
