@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `id` | string | 唯一，如 `stall-1` |
 | `name` | string | 唯一，1–40 字 |
-| `canteen` | string | 食堂枚举，当前 `第一食堂`、`第二食堂` |
+| `canteen` | string | 食堂枚举，`第一食堂`、`第二食堂`、`风味食堂` |
 | `desc` | string | 档口简介，≤120 字 |
 | `window` | string | 取餐窗口，如 `A 窗口`；下单时拼成 `青禾小厨 · A 窗口` |
 
@@ -49,14 +49,14 @@
 | `stallId` | string | 必须引用存在的档口；商家只能写自己档口 |
 | `category` | string | `家常小炒` / `面食米线` / `轻食蔬菜` / `风味套餐` |
 | `meal` | string | `breakfast` / `lunch` / `dinner` / `night` |
-| `status` | string | `success` 正常 / `warning` 紧张 / `danger` 售罄或下架 |
+| `status` | string | `success` 正常 / `warning` 紧张 / `danger` 售罄 |
 | `badges` | string[] | ≤3 项，每项 1–8 字，自动去重 |
 | `spice` | number | `0`–`3` 的整数 |
 | `tags` | `{text,type}[]` | ≤3 项；`type` 为 `veg` / `halal` / `spicy` |
 | `rating` | number | 0–5，服务端托管，客户端不可改 |
 | `sales` | number | 非负整数，服务端托管，客户端不可改 |
 
-**菜品状态取舍**：分工文档建议新增 `available` 布尔值；本实现保留页面和种子已在使用的 `status` 三态，避免双写不一致。`status === 'danger'` 即视为售罄/下架；下单校验同时兼容历史数据里的 `soldOut === true` 与 `available === false`，三者只需命中一个就拒绝下单。
+`listed` 单独记录上下架，缺省值为 `true`。`status` 描述在售库存状态，`danger` 表示售罄。旧菜品的 `soldOut: true` 和 `available: false` 继续受到服务端约束。
 
 ### 3.3 order（订单）
 
@@ -79,7 +79,7 @@
 ### 3.4 OrderItem
 
 ```json
-{ "dishId": "dish-01", "name": "招牌红烧肉饭", "image": "/images/hongshaorou.jpg", "price": 18, "qty": 2 }
+{ "dishId": "dish-01", "name": "招牌红烧肉饭", "image": "/images/dish-01.webp", "price": 18, "qty": 2 }
 ```
 
 客户端提交明细只允许 `{ dishId, qty }`；`name`、`image`、`price` 由服务端按当前菜品回填，防止篡改价格。`qty` 为 1–20 的整数；同一 `dishId` 在一单中不能重复出现。
@@ -96,7 +96,7 @@
 | `/auth/session` | DELETE | 204 | 撤销当前会话 |
 | `/auth/sessions` | DELETE | 204 | 撤销本人全部设备会话 |
 | `/me` | GET | 脱敏用户对象 | 只能本人 |
-| `/me/summary` | GET | `{ totalOrders, pendingOrders, completedOrders, recentOrders }` | 按本人 `userId` 统计 |
+| `/me/summary` | GET | `{ totalOrders, pendingOrders, readyOrders, completedOrders, recentOrders }` | 学生按本人统计，商家按所属档口统计。`pendingOrders` 为待支付，`readyOrders` 为待取餐 |
 | `/me/profile` | PUT | `{ displayName, phone, email, canteen, avatarTone }` | 白名单；禁止改 `account/id/role` |
 | `/me/preferences` | PUT | `{ spice, cuisines, avoidIngredients, mealTime }` | 枚举白名单 |
 | `/me/password` | PUT | `{ currentPassword, newPassword }` | 校验旧密码；撤销全部旧会话 |
@@ -209,7 +209,7 @@ preparing（备餐中） ──商家 next──▶ ready（待取餐） ──�
 - 请求拦截自动加 `Authorization: Bearer <token>`（`/auth/login` 除外），并维护全局 `requestState.pending`；成功或失败都减一，保证不发请求时归零。
 - 响应失败时把归一化结果写入 `error.normalized` 和 `requestState.lastError`；401 且非登录接口派发 `shiguang:unauthorized`。
 - 导出 `pendingCount`、`isRequesting`、`resetRequestState`，供顶栏/调试面板显示跨页面请求状态；页面自己的 `loading` 仍负责局部骨架屏和按钮禁用。
-- 领域 API（`api/auth.js`、`api/account.js`、`api/catalog.js`、`api/orders.js`）只返回 `response.data`，不重复创建实例。
+- 领域 API（`api/auth.js`、`api/account.js`、`api/dishes.js`、`api/orders.js`）只返回 `response.data`，不重复创建实例。
 
 ### 6.2 `src/api/errors.js`
 
@@ -228,20 +228,21 @@ preparing（备餐中） ──商家 next──▶ ready（待取餐） ──�
 ### 6.3 页面请求模板
 
 ```js
-const loading = ref(false)
-const submitting = ref(false)
-const errorText = ref('')
-
-async function load() {
-  loading.value = true
-  errorText.value = ''
-  try {
-    list.value = await catalogApi.dishes()
-  } catch (error) {
-    errorText.value = requestMessage(error, '菜单加载失败，请稍后重试。')
-  } finally {
-    loading.value = false
-  }
+export default {
+  data: () => ({ loading: false, errorText: '', dishes: [] }),
+  methods: {
+    async load() {
+      this.loading = true
+      this.errorText = ''
+      try {
+        this.dishes = await dishesApi.list()
+      } catch (error) {
+        this.errorText = requestMessage(error, '菜单加载失败，请稍后重试。')
+      } finally {
+        this.loading = false
+      }
+    },
+  },
 }
 ```
 
@@ -265,7 +266,7 @@ async function load() {
 
 ```bash
 cd web
-npm.cmd test                 # 单元 + 接口，共 39 条
+npm.cmd test                 # 单元 + 接口，验收数量见 docs/final-review.md
 node server/index.cjs        # 3001 端口
 ```
 
@@ -273,3 +274,15 @@ node server/index.cjs        # 3001 端口
 - `tests/api/data-api.test.js`：目录读取、商家本档口 CRUD、未知字段、跨档口 403、学生写 403、档口只读、下单核价/取餐码/窗口、重复明细/超量/夹带字段、售罄、跨档口订单、可见性隔离、状态流转、非法 JSON、404/403/405、筛选枚举。
 - `tests/api/helpers/api-harness.mjs`：每个测试文件独立临时库与凭据，随机端口启动，不污染 `db.json` 和 `.local` 使用记录。
 - `server/db.cjs` 在每次启动时深校验 `db.json`：唯一 id、枚举、金额、引用、密码散列字段、订单明细等；种子损坏会直接拒绝启动，避免带病演示。
+
+## 终版字段与接口
+
+| 入口 | 读写约定 |
+| --- | --- |
+| `GET /dishes`、`GET /dishes/:id` | 学生仅见上架菜。读回的 `reviewCount` 为实际评价数，非零时 `rating` 为买家平均星级，零时旧评分显示为参考。 |
+| `PUT /dishes/:id` | 本档口可更新 `listed`。下架与售罄独立，旧记录缺省为上架。管理列表使用 `GET /dishes?manage=1&stallId=…` 取回本档口下架菜。`originalPrice: null` 清除划线价。 |
+| `POST /orders` | 一个档口生成一笔订单。桌面与移动端都按选择的分组提交；含下架菜返回 422 `DISH_UNLISTED`。成功后仅扣该组已提交数量。 |
+| `GET /orders` | 列表按创建时间降序。商家列表额外给出布尔字段 `ownStall`，写权限由服务端独立校验。 |
+| `PUT /orders/:id/ratings/:dishId` | 本人的已完成订单内可提交 `{"stars": 1..5}`，成功返回订单及 `ratings`。重复保存会更新同一评分。未完成 409，星级非法 422，订单或明细不属于本人 404。 |
+
+结算时客户端以 `Idempotency-Key` 发送 32 位小写十六进制标识。第一次下单返回 201；同一学生同一请求重试返回 200 和原订单，复用标识提交不同内容返回 409。回执与订单在同一次数据库写入中保存。
