@@ -8,7 +8,12 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-2xl);
-  background: linear-gradient(118deg, var(--brand-800) 0%, var(--brand-700) 44%, var(--brand-600) 100%);
+  background: linear-gradient(
+    118deg,
+    var(--brand-800) 0%,
+    var(--brand-700) 44%,
+    var(--brand-600) 100%
+  );
   color: var(--white);
   padding: var(--space-8) var(--space-9);
   min-height: 208px;
@@ -36,7 +41,9 @@
   border: 1px solid var(--glow-2);
   border-radius: 50%;
   z-index: -1;
-  box-shadow: 0 0 0 34px var(--glow-3), 0 0 0 68px var(--glow-4);
+  box-shadow:
+    0 0 0 34px var(--glow-3),
+    0 0 0 68px var(--glow-4);
 }
 .order-hero__eyebrow {
   display: inline-flex;
@@ -97,7 +104,7 @@
   gap: var(--space-4);
   margin: var(--space-7) 0 var(--space-4);
 }
-.order-section-head h2 {
+.order-section-head :is(h1, h2) {
   font-size: var(--fs-24);
   margin: 0 0 4px;
   color: var(--gray-700);
@@ -293,7 +300,7 @@
   .order-hero__meta {
     gap: var(--space-5);
   }
-  .order-section-head h2 {
+  .order-section-head :is(h1, h2) {
     font-size: var(--fs-20);
   }
 }

@@ -83,3 +83,27 @@ test('刷新后旧的 price（元）数据能迁移成 priceCents（分）', () 
   assert.equal(cart.items[0].price, 12.34)
   assert.equal(cart.total, 24.68)
 })
+
+test('旧餐车按档口结算，仅扣除请求快照的份数；切换用户清空', () => {
+  const cart = useCartStore()
+  cart.bindAccount('student-a')
+  cart.add(dish('a', 12, '甲档'), 2)
+  cart.add({ ...dish('b', 3, '甲档'), stallId: 'stall-1' })
+  cart.add({ ...dish('c', 4, '乙档'), stallId: 'stall-2' })
+  const group = cart.byStall.find((value) => value.key === 'stall-1')
+  assert.equal(group.subtotalCents, 2700)
+  const payload = cart.payload('少盐', group.items)
+  cart.add(dish('a', 12, '甲档'))
+  cart.consume(payload.items)
+  assert.deepEqual(
+    cart.items.map((item) => [item.dishId, item.qty]),
+    [
+      ['a', 1],
+      ['c', 1],
+    ],
+  )
+  cart.bindAccount('student-a')
+  assert.equal(cart.count, 2)
+  cart.bindAccount('student-b')
+  assert.equal(cart.count, 0)
+})

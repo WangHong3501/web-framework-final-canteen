@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 30000,
-  globalTimeout: 120000,
+  globalTimeout: 240000,
   expect: { timeout: 7000 },
   reporter: 'list',
   use: {
@@ -24,7 +24,7 @@ export default defineConfig({
     env: {
       WEB_PORT: '5174',
       API_PORT: '3002',
-      DB_FILE: path.resolve('.local/e2e/db.runtime.json'),
+      DB_FILE: path.resolve(`.local/e2e/${process.pid}-${Date.now()}/db.runtime.json`),
     },
   },
 })

@@ -61,7 +61,12 @@ export default {
 </script>
 <template>
   <div class="account-app">
-    <a href="#account-content" class="skip-link">跳到页面内容</a>
+    <a
+      href="#account-content"
+      class="skip-link"
+      @click.prevent="$el.querySelector('#account-content').focus()"
+      >跳到页面内容</a
+    >
     <header class="app-header">
       <div class="app-header__inner">
         <router-link to="/center/overview" aria-label="食光校园首页" class="brand-link"
@@ -113,7 +118,7 @@ export default {
           </button>
         </div>
       </el-aside>
-      <el-main id="account-content" class="account-content"><router-view /></el-main>
+      <el-main id="account-content" tabindex="-1" class="account-content"><router-view /></el-main>
     </el-container>
     <footer class="app-footer">
       <span>食光校园</span><span>让每一餐都有好食光</span

@@ -26,14 +26,16 @@ const DISH_FIELDS = new Set([
   'category',
   'meal',
   'status',
+  'listed',
   'badges',
   'spice',
   'tags',
   'rating',
+  'reviewCount',
   'sales',
 ])
 // 这些字段可以随完整对象一起提交，但服务端不会按提交值改写。
-const DISH_READ_ONLY = new Set(['id', 'stall', 'stallId', 'rating', 'sales'])
+const DISH_READ_ONLY = new Set(['id', 'stall', 'stallId', 'rating', 'sales', 'reviewCount'])
 const ORDER_CREATE_FIELDS = new Set(['items', 'remark', 'meal', 'total', 'stallId'])
 const ORDER_UPDATE_FIELDS = new Set(['action', 'status'])
 const ITEM_FIELDS = new Set(['dishId', 'qty'])
@@ -89,8 +91,13 @@ function parseDishInput(body, { partial = false } = {}) {
     else data.price = body.price
   }
   if (body.originalPrice !== undefined) {
-    if (!isMoney(body.originalPrice)) add('originalPrice', '原价需在 0.01–999 元之间')
+    if (body.originalPrice === null && partial) data.originalPrice = null
+    else if (!isMoney(body.originalPrice)) add('originalPrice', '原价需在 0.01–999 元之间')
     else data.originalPrice = body.originalPrice
+  }
+  if (body.listed !== undefined) {
+    if (typeof body.listed !== 'boolean') add('listed', '上架状态必须为布尔值')
+    else data.listed = body.listed
   }
   if (body.image !== undefined) {
     if (
@@ -102,11 +109,7 @@ function parseDishInput(body, { partial = false } = {}) {
     else data.image = body.image
   }
   if (body.desc !== undefined) {
-    if (
-      typeof body.desc !== 'string' ||
-      body.desc.length > 120 ||
-      hasControlChars(body.desc)
-    )
+    if (typeof body.desc !== 'string' || body.desc.length > 120 || hasControlChars(body.desc))
       add('desc', '描述最多 120 个字符，且不能包含控制字符')
     else data.desc = body.desc.trim()
   }
@@ -125,7 +128,9 @@ function parseDishInput(body, { partial = false } = {}) {
   if (body.badges !== undefined) {
     if (!Array.isArray(body.badges) || body.badges.length > 3)
       add('badges', 'badges 必须是最多 3 项的数组')
-    else if (body.badges.some((badge) => typeof badge !== 'string' || !badge.trim() || badge.length > 8))
+    else if (
+      body.badges.some((badge) => typeof badge !== 'string' || !badge.trim() || badge.length > 8)
+    )
       add('badges', '每个角标需为 1–8 个字符')
     else data.badges = [...new Set(body.badges.map((badge) => badge.trim()))]
   }
@@ -134,8 +139,7 @@ function parseDishInput(body, { partial = false } = {}) {
     else data.spice = body.spice
   }
   if (body.tags !== undefined) {
-    if (!Array.isArray(body.tags) || body.tags.length > 3)
-      add('tags', 'tags 必须是最多 3 项的数组')
+    if (!Array.isArray(body.tags) || body.tags.length > 3) add('tags', 'tags 必须是最多 3 项的数组')
     else {
       const tags = []
       for (const [index, tag] of body.tags.entries()) {
@@ -154,7 +158,12 @@ function parseDishInput(body, { partial = false } = {}) {
     }
   }
   if (body.rating !== undefined) {
-    if (typeof body.rating !== 'number' || !Number.isFinite(body.rating) || body.rating < 0 || body.rating > 5)
+    if (
+      typeof body.rating !== 'number' ||
+      !Number.isFinite(body.rating) ||
+      body.rating < 0 ||
+      body.rating > 5
+    )
       add('rating', '评分需在 0–5 之间')
     else data.rating = body.rating
   }
@@ -168,7 +177,8 @@ function parseDishInput(body, { partial = false } = {}) {
     else data.id = body.id
   }
   if (body.stallId !== undefined) {
-    if (typeof body.stallId !== 'string' || !body.stallId) add('stallId', 'stallId 必须是非空字符串')
+    if (typeof body.stallId !== 'string' || !body.stallId)
+      add('stallId', 'stallId 必须是非空字符串')
     else data.stallId = body.stallId
   }
   if (body.stall !== undefined) {
@@ -195,15 +205,16 @@ function resolveMerchantStall(user, stalls) {
   return stalls.find({ id: user.stallId }).value() || null
 }
 
-function nextDishId(dishes) {
-  let max = 0
-  for (const dish of dishes.value()) {
-    const matched = /^dish-(\d+)$/.exec(String(dish.id))
-    if (matched) max = Math.max(max, Number(matched[1]))
-  }
-  let next = max + 1
-  while (dishes.find({ id: `dish-${String(next).padStart(2, '0')}` }).value()) next += 1
-  return `dish-${String(next).padStart(2, '0')}`
+function nextDishId(dishes, orders) {
+  const ids = [
+    ...dishes.value().map((dish) => dish.id),
+    ...orders.value().flatMap((order) => order.items.map((item) => item.dishId)),
+  ]
+  const highest = ids.reduce(
+    (max, id) => Math.max(max, Number(/^dish-(\d+)$/.exec(id)?.[1]) || 0),
+    0,
+  )
+  return `dish-${String(highest + 1).padStart(2, '0')}`
 }
 
 function nextOrderId(orders, at) {
@@ -222,11 +233,12 @@ function nextPickupCode(orders) {
       .filter((order) => ['pending', 'preparing', 'ready'].includes(order.status))
       .map((order) => String(order.pickupCode || '')),
   )
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const code = String(Math.floor(1000 + Math.random() * 9000))
+  const start = crypto.randomInt(9000)
+  for (let offset = 0; offset < 9000; offset += 1) {
+    const code = String(1000 + ((start + offset) % 9000))
     if (!active.has(code)) return code
   }
-  return String(1000 + (orders.value().length % 9000))
+  return null
 }
 
 function merchantOwnsOrder(order, user, dishes) {
@@ -234,9 +246,7 @@ function merchantOwnsOrder(order, user, dishes) {
   if (order.stallId) return order.stallId === user.stallId
   // 兼容早期没有 stallId 的订单：按明细菜品反查档口。
   const stallIds = new Set(
-    (order.items || [])
-      .map((item) => dishes.find({ id: item.dishId }).value()?.stallId)
-      .filter(Boolean),
+    (order.items || []).map((item) => dishes.find({ id: item.dishId }).value()?.stallId),
   )
   return stallIds.size === 1 && stallIds.has(user.stallId)
 }
@@ -258,6 +268,7 @@ function createApp(options = {}) {
     res.json({ status: 'ok', service: 'shiguang-campus-api' })
   })
   const { requireSession } = registerAuth(server, router.db, {
+    ownsOrder: (order, user) => merchantOwnsOrder(order, user, router.db.get('dishes')),
     ...options,
     credentialFile: options.credentialFile || path.join(path.dirname(dbFile), 'auth.runtime.json'),
   })
@@ -266,6 +277,51 @@ function createApp(options = {}) {
   const dishes = router.db.get('dishes')
   const stalls = router.db.get('stalls')
   const orders = router.db.get('orders')
+
+  // 一份订单内每道菜只有一个评分，重复保存会替换旧值。
+  server.put('/orders/:id/ratings/:dishId', (req, res) => {
+    const { id, dishId } = req.params
+    const order = orders.find({ id }).value()
+    const user = req.auth.user
+    if (!order || user.role !== 'student' || order.userId !== user.id)
+      return replyError(res, 404, 'NOT_FOUND', '未找到可评价的订单。')
+    if (order.status !== 'completed')
+      return replyError(res, 409, 'ORDER_INCOMPLETE', '取餐完成后即可评价。')
+    if (!order.items.some((item) => item.dishId === dishId))
+      return replyError(res, 404, 'NOT_FOUND', '订单中没有这道菜。')
+    const stars = req.body?.stars
+    if (
+      !isObject(req.body) ||
+      Object.keys(req.body).length !== 1 ||
+      !Number.isInteger(stars) ||
+      stars < 1 ||
+      stars > 5
+    )
+      return replyError(res, 422, 'INVALID_RATING', '请选择 1 至 5 星。')
+    const ratings = { ...order.ratings, [dishId]: stars }
+    orders.find({ id }).assign({ ratings }).write()
+    return res.json(orders.find({ id }).value())
+  })
+
+  function withRatings(list) {
+    const totals = new Map()
+    for (const order of orders.value()) {
+      for (const [dishId, stars] of Object.entries(order.ratings || {})) {
+        const entry = totals.get(dishId) || { sum: 0, count: 0 }
+        entry.sum += stars
+        entry.count += 1
+        totals.set(dishId, entry)
+      }
+    }
+    return list.map((dish) => {
+      const votes = totals.get(dish.id)
+      return {
+        ...dish,
+        rating: votes ? round2(votes.sum / votes.count) : dish.rating,
+        reviewCount: votes?.count || 0,
+      }
+    })
+  }
 
   server.use((req, res, next) => {
     const segments = req.path.split('/').filter(Boolean)
@@ -278,8 +334,7 @@ function createApp(options = {}) {
       return replyError(res, 403, 'FORBIDDEN', '请通过本人账户接口访问个人资料。')
     if (!['dishes', 'stalls', 'orders'].includes(resource))
       return replyError(res, 404, 'NOT_FOUND', '未找到这个服务。')
-    if (segments.length > 2)
-      return replyError(res, 404, 'NOT_FOUND', '未找到这个资源。')
+    if (segments.length > 2) return replyError(res, 404, 'NOT_FOUND', '未找到这个资源。')
 
     // ---- 档口：只读目录，写操作统一拒绝 ----
     if (resource === 'stalls') {
@@ -287,16 +342,20 @@ function createApp(options = {}) {
         return replyError(res, 403, 'FORBIDDEN', '档口资料由管理员维护，商家不能直接改写。')
       if (!id) return res.json(stalls.value())
       const stall = stalls.find({ id }).value()
-      return stall
-        ? res.json(stall)
-        : replyError(res, 404, 'NOT_FOUND', '未找到这个档口。')
+      return stall ? res.json(stall) : replyError(res, 404, 'NOT_FOUND', '未找到这个档口。')
     }
 
     // ---- 菜品：登录后可读；商家只能维护本档口 ----
     if (resource === 'dishes') {
       if (isRead) {
         if (!id) {
-          let list = dishes.value()
+          const ownCatalog = req.query.manage === '1' && req.auth.user.role === 'merchant'
+          let list = dishes
+            .value()
+            .filter(
+              (dish) =>
+                dish.listed !== false || (ownCatalog && dish.stallId === req.auth.user.stallId),
+            )
           const { stallId, stall, meal, category, status, q } = req.query
           if (stallId !== undefined) list = list.filter((dish) => dish.stallId === stallId)
           if (stall !== undefined) list = list.filter((dish) => dish.stall === stall)
@@ -319,23 +378,26 @@ function createApp(options = {}) {
             const keyword = q.trim().toLowerCase()
             list = list.filter((dish) =>
               [dish.name, dish.desc, dish.stall, dish.category].some((value) =>
-                String(value || '').toLowerCase().includes(keyword),
+                String(value || '')
+                  .toLowerCase()
+                  .includes(keyword),
               ),
             )
           }
-          return res.json(list)
+          return res.json(withRatings(list))
         }
         const dish = dishes.find({ id }).value()
-        return dish
-          ? res.json(dish)
+        return dish &&
+          (dish.listed !== false ||
+            (req.auth.user.role === 'merchant' && dish.stallId === req.auth.user.stallId))
+          ? res.json(withRatings([dish])[0])
           : replyError(res, 404, 'NOT_FOUND', '未找到这个菜品。')
       }
 
       if (req.auth.user.role !== 'merchant')
         return replyError(res, 403, 'FORBIDDEN', '该操作仅限档口商家。')
       const stall = resolveMerchantStall(req.auth.user, stalls)
-      if (!stall)
-        return replyError(res, 403, 'FORBIDDEN', '商家账号未绑定有效档口，无法维护菜品。')
+      if (!stall) return replyError(res, 403, 'FORBIDDEN', '商家账号未绑定有效档口，无法维护菜品。')
 
       if (!id) {
         if (method !== 'POST')
@@ -346,10 +408,10 @@ function createApp(options = {}) {
           return replyError(res, 403, 'FORBIDDEN', '只能新增本档口的菜品。')
         if (data.stall !== undefined && data.stall !== stall.name)
           return replyError(res, 403, 'FORBIDDEN', '只能新增本档口的菜品。')
-        if (data.originalPrice !== undefined && data.originalPrice < data.price)
+        if (data.originalPrice != null && data.originalPrice < data.price)
           return invalidDish(res, [{ field: 'originalPrice', message: '原价不能低于现价' }])
         const dish = {
-          id: nextDishId(dishes),
+          id: nextDishId(dishes, orders),
           name: data.name,
           price: data.price,
           ...(data.originalPrice !== undefined ? { originalPrice: data.originalPrice } : {}),
@@ -360,6 +422,7 @@ function createApp(options = {}) {
           category: data.category || '家常小炒',
           meal: data.meal || 'lunch',
           status: data.status || 'success',
+          listed: data.listed ?? true,
           badges: data.badges || [],
           spice: data.spice ?? 0,
           tags: data.tags || [],
@@ -393,7 +456,7 @@ function createApp(options = {}) {
       const nextPrice = data.price ?? current.price
       const nextOriginal =
         data.originalPrice !== undefined ? data.originalPrice : current.originalPrice
-      if (nextOriginal !== undefined && nextOriginal < nextPrice)
+      if (nextOriginal != null && nextOriginal < nextPrice)
         return invalidDish(res, [{ field: 'originalPrice', message: '原价不能低于现价' }])
 
       const patch = {}
@@ -411,8 +474,7 @@ function createApp(options = {}) {
 
     if (!id) {
       if (method === 'POST') {
-        if (isMerchant)
-          return replyError(res, 403, 'FORBIDDEN', '商家账户不能提交点餐订单。')
+        if (isMerchant) return replyError(res, 403, 'FORBIDDEN', '商家账户不能提交点餐订单。')
         if (!isObject(req.body))
           return replyError(res, 422, 'INVALID_ORDER', '请求体必须是 JSON 对象。')
         const unknown = Object.keys(req.body).filter((key) => !ORDER_CREATE_FIELDS.has(key))
@@ -431,12 +493,26 @@ function createApp(options = {}) {
         )
           return replyError(res, 422, 'INVALID_REMARK', '备注最多 100 个字符，且不能包含控制字符。')
 
+        const requestKey = req.get('Idempotency-Key')
+        if (requestKey && !/^[a-f0-9]{32}$/.test(requestKey))
+          return replyError(res, 422, 'INVALID_CHECKOUT_KEY', '结算标识无效，请重新打开餐车。')
+        const receipts = router.db.getState().checkoutReceipts || {}
+        const receiptKey = `${user.id}:${requestKey}`
+        const signature = crypto
+          .createHash('sha256')
+          .update(JSON.stringify([meal || 'lunch', remark?.trim() || '', items]))
+          .digest('hex')
+        const receipt = requestKey && receipts[receiptKey]
+        if (receipt) {
+          if (receipt.signature !== signature)
+            return replyError(res, 409, 'CHECKOUT_CHANGED', '本次结算内容已改变，请重新确认。')
+          return res.json(orders.find({ id: receipt.orderId }).value())
+        }
         const normalized = []
         const seenDishes = new Set()
         const stallIds = new Set()
         for (const line of items) {
-          if (!isObject(line))
-            return replyError(res, 422, 'INVALID_ITEMS', '菜品明细必须是对象。')
+          if (!isObject(line)) return replyError(res, 422, 'INVALID_ITEMS', '菜品明细必须是对象。')
           const extra = Object.keys(line).filter((key) => !ITEM_FIELDS.has(key))
           if (extra.length)
             return replyError(res, 422, 'INVALID_ITEMS', '菜品明细只支持 dishId 与 qty。', {
@@ -452,8 +528,9 @@ function createApp(options = {}) {
             return replyError(res, 422, 'INVALID_ITEMS', '同一菜品请合并为一行。')
           seenDishes.add(dishId)
           const dish = dishes.find({ id: dishId }).value()
-          if (!dish)
-            return replyError(res, 422, 'INVALID_ITEMS', '订单中包含不存在的菜品。')
+          if (!dish) return replyError(res, 422, 'INVALID_ITEMS', '订单中包含不存在的菜品。')
+          if (dish.listed === false)
+            return replyError(res, 422, 'DISH_UNLISTED', `「${dish.name}」已下架，请移出餐车。`)
           if (isSoldOut(dish))
             return replyError(res, 422, 'DISH_SOLD_OUT', `「${dish.name}」今日已售罄。`)
           if (!dish.stallId)
@@ -468,17 +545,15 @@ function createApp(options = {}) {
           })
         }
         if (stallIds.size > 1)
-          return replyError(
-            res,
-            422,
-            'MIXED_STALLS',
-            '一笔订单只能选择一个档口，请分开下单。',
-          )
+          return replyError(res, 422, 'MIXED_STALLS', '一笔订单只能选择一个档口，请分开下单。')
         const stall = stalls.find({ id: [...stallIds][0] }).value()
         if (!stall)
           return replyError(res, 422, 'INVALID_ITEMS', '订单档口不存在，请刷新菜单后重试。')
         const total = round2(normalized.reduce((sum, line) => sum + line.price * line.qty, 0))
         const now = new Date(clock()).toISOString()
+        const pickupCode = nextPickupCode(orders)
+        if (!pickupCode)
+          return replyError(res, 503, 'PICKUP_CODES_BUSY', '当前取餐码已满，请稍后重试。')
         const order = {
           id: nextOrderId(orders, clock()),
           userId: user.id,
@@ -490,12 +565,17 @@ function createApp(options = {}) {
           remark: remark ? remark.trim() : '',
           meal: meal || 'lunch',
           status: 'preparing',
-          pickupCode: nextPickupCode(orders),
+          pickupCode,
           window: stall.window ? `${stall.name} · ${stall.window}` : stall.name,
           eta: '约 15 分钟',
           createdAt: now,
           updatedAt: now,
         }
+        if (requestKey)
+          router.db.getState().checkoutReceipts = {
+            ...receipts,
+            [receiptKey]: { orderId: order.id, signature },
+          }
         orders.push(order).write()
         return res.status(201).json(order)
       }
@@ -520,7 +600,14 @@ function createApp(options = {}) {
       const sorted = [...visible].sort(
         (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0),
       )
-      return res.json(sorted)
+      return res.json(
+        isMerchant
+          ? sorted.map((order) => ({
+              ...order,
+              ownStall: merchantOwnsOrder(order, user, dishes),
+            }))
+          : sorted,
+      )
     }
 
     const order = orders.find({ id }).value()
@@ -583,9 +670,7 @@ function createApp(options = {}) {
     return replyError(res, 403, 'FORBIDDEN', '当前订单不能由你变更状态。')
   })
 
-  server.use((_req, res) =>
-    replyError(res, 404, 'NOT_FOUND', '未找到这个服务。'),
-  )
+  server.use((_req, res) => replyError(res, 404, 'NOT_FOUND', '未找到这个服务。'))
   server.use((err, _req, res, _next) => {
     if (res.headersSent) return
     if (err instanceof SyntaxError || err.type === 'entity.parse.failed')

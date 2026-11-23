@@ -10,10 +10,12 @@ import fs from 'node:fs'
 const require = createRequire(import.meta.url)
 const root = fileURLToPath(new URL('..', import.meta.url))
 const vite = path.join(path.dirname(require.resolve('vite/package.json')), 'bin/vite.js')
+const output = path.resolve(root, process.env.SCREENSHOT_DIR || '.local/screenshots')
+fs.mkdirSync(output, { recursive: true })
 const env = {
   ...process.env,
   API_PORT: '3003',
-  DB_FILE: path.join(root, '.local/preview/db.runtime.json'),
+  DB_FILE: path.join(root, `.local/preview/${process.pid}-${Date.now()}/db.runtime.json`),
 }
 const children = [
   spawn(process.execPath, ['server/index.cjs'], {
@@ -101,12 +103,12 @@ try {
     `PASS route style ownership: login requests ${loginStyles.length} CSS files, ${loginCssBytes} bytes; account CSS stays deferred.`,
   )
   await page.screenshot({
-    path: path.resolve(root, '../screenshots/G5-01-登录-桌面.png'),
+    path: path.resolve(output, 'G5-01-登录-桌面.png'),
     fullPage: true,
   })
   await page.setViewportSize({ width: 375, height: 812 })
   await page.screenshot({
-    path: path.resolve(root, '../screenshots/G5-04-登录-手机.png'),
+    path: path.resolve(output, 'G5-04-登录-手机.png'),
     fullPage: true,
   })
   await page.setViewportSize({ width: 1440, height: 1000 })
@@ -124,7 +126,7 @@ try {
   if (!persistence.local || persistence.session)
     throw new Error('Remember-login persistence did not use local storage exclusively.')
   await page.screenshot({
-    path: path.resolve(root, '../screenshots/G5-02-个人中心-桌面.png'),
+    path: path.resolve(output, 'G5-02-个人中心-桌面.png'),
     fullPage: true,
   })
   const otherPage = await context.newPage()
@@ -132,7 +134,7 @@ try {
   await expect(otherPage.getByLabel('昵称', { exact: true })).toHaveValue('王鸿')
   await audit(otherPage, 'profile')
   await otherPage.screenshot({
-    path: path.resolve(root, '../screenshots/G5-03-个人资料-桌面.png'),
+    path: path.resolve(output, 'G5-03-个人资料-桌面.png'),
     fullPage: true,
   })
   for (const destination of ['preferences', 'security']) {
@@ -143,8 +145,8 @@ try {
     await audit(otherPage, destination)
     await otherPage.screenshot({
       path: path.resolve(
-        root,
-        `../screenshots/${destination === 'preferences' ? 'G5-06-用餐偏好-桌面' : 'G5-07-账号安全-桌面'}.png`,
+        output,
+        `${destination === 'preferences' ? 'G5-06-用餐偏好-桌面' : 'G5-07-账号安全-桌面'}.png`,
       ),
       fullPage: true,
     })
@@ -164,7 +166,7 @@ try {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.screenshot({
-    path: path.resolve(root, '../screenshots/G5-05-个人中心-手机.png'),
+    path: path.resolve(output, 'G5-05-个人中心-手机.png'),
     fullPage: true,
   })
   if (runtimeErrors.length) throw new Error(runtimeErrors.join('\n'))

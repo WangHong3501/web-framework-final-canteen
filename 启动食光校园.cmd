@@ -15,6 +15,7 @@ if not exist "node_modules\vite\bin\vite.js" (
   if errorlevel 1 goto failed
 )
 echo.
+if not defined DB_FILE set "DB_FILE=.local\final-demo\db.runtime.json"
 echo 食光校园启动后，请打开 http://127.0.0.1:5173/#/login
 echo 请保持此窗口运行；按 Ctrl+C 可停止。
 echo.

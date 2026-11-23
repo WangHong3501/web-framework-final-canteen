@@ -142,7 +142,10 @@ export default {
       if (this.saving) return
       const valid = await this.$refs.dishForm.validate().catch(() => false)
       if (!valid) return
-      this.$emit('submit', buildDishPayload(this.form))
+      const payload = buildDishPayload(this.form)
+      if (this.editing && this.initialDish.originalPrice != null && !this.form.originalPrice)
+        payload.originalPrice = null
+      this.$emit('submit', payload)
     },
   },
 }

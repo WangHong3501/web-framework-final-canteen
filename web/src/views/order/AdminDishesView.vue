@@ -55,7 +55,7 @@ export default {
       saving: false,
       dialogError: '',
       categories: ['全部', ...DISH_CATEGORIES],
-      statusOptions: DISH_STATUS_OPTIONS,
+      statusOptions: [...DISH_STATUS_OPTIONS, { value: 'unlisted', label: '已下架' }],
     }
   },
   computed: {
@@ -77,20 +77,29 @@ export default {
       return this.dishes.filter((item) => String(item.stallId) === String(this.stallId))
     },
     visibleDishes() {
-      return filterDishList(this.ownDishes, {
+      const source =
+        this.statusFilter === 'all'
+          ? this.ownDishes
+          : this.ownDishes.filter((dish) =>
+              this.statusFilter === 'unlisted' ? dish.listed === false : dish.listed !== false,
+            )
+      return filterDishList(source, {
         category: this.categoryFilter,
         keyword: this.keyword,
-        status: this.statusFilter,
+        status: this.statusFilter === 'unlisted' ? 'all' : this.statusFilter,
       })
     },
     successCount() {
-      return this.ownDishes.filter((item) => item.status === 'success').length
+      return this.ownDishes.filter((item) => item.listed !== false && item.status === 'success')
+        .length
     },
     warningCount() {
-      return this.ownDishes.filter((item) => item.status === 'warning').length
+      return this.ownDishes.filter((item) => item.listed !== false && item.status === 'warning')
+        .length
     },
     dangerCount() {
-      return this.ownDishes.filter((item) => item.status === 'danger').length
+      return this.ownDishes.filter((item) => item.listed !== false && item.status === 'danger')
+        .length
     },
     hasFilter() {
       return (
@@ -109,7 +118,7 @@ export default {
       this.errorMsg = ''
       try {
         const [dishes, stalls] = await Promise.all([
-          dishesApi.list(this.stallId ? { stallId: this.stallId } : {}),
+          dishesApi.list({ stallId: this.stallId, manage: '1' }),
           dishesApi.stalls(),
         ])
         this.dishes = Array.isArray(dishes) ? dishes : []
@@ -162,8 +171,8 @@ export default {
     },
     async toggleStatus(dish) {
       if (this.actingId) return
-      const next = dish.status === 'danger' ? 'success' : 'danger'
-      const label = next === 'danger' ? '已售罄（下架）' : '可点餐（上架）'
+      const next = dish.listed === false
+      const label = next ? '上架' : '下架'
       try {
         await ElMessageBox.confirm(`确定将「${dish.name}」设为「${label}」吗？`, '调整售卖状态', {
           confirmButtonText: '确定',
@@ -175,9 +184,9 @@ export default {
       }
       this.actingId = dish.id
       try {
-        await dishesApi.update(dish.id, { status: next })
+        await dishesApi.update(dish.id, { listed: next })
         await this.load()
-        ElMessage.success(next === 'danger' ? `「${dish.name}」已下架` : `「${dish.name}」已上架`)
+        ElMessage.success(`「${dish.name}」已${label}`)
       } catch (error) {
         ElMessage.error(requestMessage(error, '更新菜品状态失败，请重试。'))
       } finally {
@@ -377,7 +386,11 @@ export default {
 
             <el-table-column label="状态" width="112">
               <template #default="{ row }">
-                <StatusTag :type="row.status" :text="statusText(row.status)" dot />
+                <StatusTag
+                  :type="row.listed === false ? 'sold' : row.status"
+                  :text="row.listed === false ? '已下架' : statusText(row.status)"
+                  dot
+                />
               </template>
             </el-table-column>
 
@@ -399,7 +412,7 @@ export default {
                     :data-testid="`toggle-dish-${row.id}`"
                     @click="toggleStatus(row)"
                   >
-                    {{ row.status === 'danger' ? '上架' : '下架' }}
+                    {{ row.listed === false ? '上架' : '下架' }}
                   </el-button>
                   <el-button
                     size="small"
@@ -436,7 +449,7 @@ export default {
 
     <footer class="dish-footer">
       <span>食光校园 · 档口工作台</span>
-      <span>新增、编辑、上下架与删除后均自动重新 GET 回读最新列表</span>
+      <span>下架后，学生菜单将隐藏该菜品。</span>
     </footer>
   </div>
 </template>

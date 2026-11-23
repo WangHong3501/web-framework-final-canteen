@@ -45,7 +45,10 @@
   box-shadow: none;
 }
 
-.el-button--primary {
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
+  --el-button-text-color: var(--white);
+  --el-button-hover-text-color: var(--white);
+  --el-button-active-text-color: var(--white);
   --el-button-bg-color: var(--forest);
   --el-button-border-color: var(--forest);
   --el-button-hover-bg-color: var(--forest-hover);
@@ -138,6 +141,9 @@
   box-shadow: var(--shadow-4);
 }
 
+.el-message--success .el-message__content {
+  color: var(--brand-800);
+}
 .el-message--success {
   background: var(--success-100);
   border-color: var(--success-line);

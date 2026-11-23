@@ -33,8 +33,11 @@ export async function startApi({ mutateSeed } = {}) {
   })
   const origin = `http://127.0.0.1:${listener.address().port}`
 
-  async function request(url, { method = 'GET', token, body, rawBody } = {}) {
-    const headers = {}
+  async function request(
+    url,
+    { method = 'GET', token, body, rawBody, headers: extraHeaders } = {},
+  ) {
+    const headers = { ...extraHeaders }
     if (token) headers.Authorization = `Bearer ${token}`
     let payload
     if (rawBody !== undefined) {
@@ -57,7 +60,11 @@ export async function startApi({ mutateSeed } = {}) {
     return { status: response.status, body: data, headers: response.headers }
   }
 
-  async function login({ account = '32605150621', role = 'student', password = 'Shiguang@2026' } = {}) {
+  async function login({
+    account = '32605150621',
+    role = 'student',
+    password = 'Shiguang@2026',
+  } = {}) {
     const response = await request('/auth/login', {
       method: 'POST',
       body: { account, password, role, remember: false },

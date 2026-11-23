@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { DEFAULT_DESTINATION, safeDestination, routeAllowsRole } from './policy'
 
@@ -61,7 +62,7 @@ const router = createRouter({
       path: '/cart',
       name: 'cart',
       component: () => import('@/views/order/CartView.vue'),
-      meta: { title: '确认订单', requiresAuth: true },
+      meta: { title: '确认订单', requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/orders',
@@ -79,7 +80,7 @@ const router = createRouter({
       path: '/mobile',
       name: 'mobile-order',
       component: () => import('@/views/mobile/MobileOrderView.vue'),
-      meta: { title: '移动端点餐', requiresAuth: true },
+      meta: { title: '移动端点餐', requiresAuth: true, roles: ['student'] },
     },
     {
       path: '/admin/overview',
@@ -122,6 +123,7 @@ router.beforeEach(async (to) => {
       const authenticated = await user.verifySession()
       if (!authenticated && protectedRoute)
         return { name: 'login', query: { redirect: safeDestination(to.fullPath) }, replace: true }
+      if (authenticated) useCartStore().bindAccount(user.user.id)
       if (authenticated && !routeAllowsRole(to.matched, user.user.role))
         return { name: 'forbidden', replace: true }
       if (authenticated && to.name === 'login') return safeDestination(to.query.redirect)

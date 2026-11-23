@@ -4,7 +4,12 @@ import http from './http'
 export const ordersApi = {
   list: () => http.get('/orders').then((res) => res.data),
   detail: (id) => http.get(`/orders/${id}`).then((res) => res.data),
-  create: (payload) => http.post('/orders', payload).then((res) => res.data),
+  create: (payload, key) =>
+    http.post('/orders', payload, { headers: { 'Idempotency-Key': key } }).then((res) => res.data),
+  rate: (id, dishId, stars) =>
+    http
+      .put(`/orders/${encodeURIComponent(id)}/ratings/${encodeURIComponent(dishId)}`, { stars })
+      .then((res) => res.data),
   update: (id, payload) => http.put(`/orders/${id}`, payload).then((res) => res.data),
   confirm: (id) => http.put(`/orders/${id}`, { action: 'confirm' }).then((res) => res.data),
   advance: (id) => http.put(`/orders/${id}`, { action: 'next' }).then((res) => res.data),

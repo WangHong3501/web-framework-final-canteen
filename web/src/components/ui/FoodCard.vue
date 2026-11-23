@@ -1,28 +1,13 @@
-<script setup>
-import { computed } from 'vue'
+<script>
 import StatusTag from './StatusTag.vue'
 import PriceTag from './PriceTag.vue'
 import AppIcon from './AppIcon.vue'
-
-const props = defineProps({
-  food: {
-    type: Object,
-    required: true,
-  },
-})
-
+import { isDishSoldOut } from '@/components/dishes/dish-meta'
 const STATUS_TEXT = {
   success: '可点餐',
   warning: '余量少',
   danger: '已售罄',
 }
-
-const soldOut = computed(() => props.food.status === 'sold' || props.food.soldOut === true)
-
-const statusText = computed(() => STATUS_TEXT[props.food.status] || '')
-
-const badges = computed(() => props.food.badges || [])
-
 const SPICE_TEXT = {
   1: '微辣',
   2: '中辣',
@@ -31,10 +16,33 @@ const SPICE_TEXT = {
   medium: '中辣',
   hot: '特辣',
 }
-
-const spiceText = computed(() => SPICE_TEXT[props.food.spice] || '')
-
-const extraTags = computed(() => props.food.tags || [])
+export default {
+  props: {
+    food: {
+      type: Object,
+      required: true,
+    },
+  },
+  components: { StatusTag, PriceTag, AppIcon },
+  emits: ['add'],
+  computed: {
+    soldOut() {
+      return isDishSoldOut(this.food) || this.food.status === 'sold'
+    },
+    statusText() {
+      return STATUS_TEXT[this.food.status] || ''
+    },
+    badges() {
+      return this.food.badges || []
+    },
+    spiceText() {
+      return SPICE_TEXT[this.food.spice] || ''
+    },
+    extraTags() {
+      return this.food.tags || []
+    },
+  },
+}
 </script>
 
 <template>
@@ -59,7 +67,7 @@ const extraTags = computed(() => props.food.tags || [])
     </div>
 
     <div class="food-info">
-      <h4 class="food-name">{{ food.name }}</h4>
+      <h3 class="food-name">{{ food.name }}</h3>
       <p class="food-desc">{{ food.desc }}</p>
 
       <div v-if="spiceText || extraTags.length" class="food-meta">
@@ -76,7 +84,7 @@ const extraTags = computed(() => props.food.tags || [])
       <div class="food-bottom">
         <PriceTag :value="food.price" size="md" :original="food.originalPrice" />
         <slot name="action">
-          <button class="text-button" type="button" :disabled="soldOut">
+          <button class="text-button" type="button" :disabled="soldOut" @click="$emit('add', food)">
             {{ soldOut ? '明日再来' : '加入餐车' }}
           </button>
         </slot>

@@ -1,27 +1,30 @@
-<script setup>
+<script>
 import AppIcon from './AppIcon.vue'
 
-const props = defineProps({
-  modelValue: { type: String, default: 'lunch' },
-  options: {
-    type: Array,
-    default: () => [
-      { key: 'breakfast', label: '早餐', icon: 'Sun' },
-      { key: 'lunch', label: '午餐', icon: 'Soup' },
-      { key: 'dinner', label: '晚餐', icon: 'Moon' },
-      { key: 'night', label: '夜宵', icon: 'Sparkles' },
-    ],
+export default {
+  props: {
+    modelValue: { type: String, default: 'lunch' },
+    options: {
+      type: Array,
+      default: () => [
+        { key: 'breakfast', label: '早餐', icon: 'Sun' },
+        { key: 'lunch', label: '午餐', icon: 'Soup' },
+        { key: 'dinner', label: '晚餐', icon: 'Moon' },
+        { key: 'night', label: '夜宵', icon: 'Sparkles' },
+      ],
+    },
+    disabledKeys: { type: Array, default: () => [] },
+    size: { type: String, default: 'md' },
   },
-  disabledKeys: { type: Array, default: () => [] },
-  size: { type: String, default: 'md' },
-})
-
-const emit = defineEmits(['update:modelValue', 'change'])
-
-function select(option) {
-  if (props.disabledKeys.includes(option.key) || option.key === props.modelValue) return
-  emit('update:modelValue', option.key)
-  emit('change', option.key)
+  components: { AppIcon },
+  emits: ['update:modelValue', 'change'],
+  methods: {
+    select(option) {
+      if (this.disabledKeys.includes(option.key) || option.key === this.modelValue) return
+      this.$emit('update:modelValue', option.key)
+      this.$emit('change', option.key)
+    },
+  },
 }
 </script>
 

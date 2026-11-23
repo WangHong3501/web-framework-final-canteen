@@ -70,7 +70,13 @@ test('商家新增菜品只会写入本档口和托管字段', async () => {
   const response = await api.request('/dishes', {
     method: 'POST',
     token: merchant,
-    body: { name: '  测试小炒  ', price: 12.5, category: '家常小炒', meal: 'lunch', desc: '集成测试' },
+    body: {
+      name: '  测试小炒  ',
+      price: 12.5,
+      category: '家常小炒',
+      meal: 'lunch',
+      desc: '集成测试',
+    },
   })
   assert.equal(response.status, 201)
   const dish = response.body
@@ -123,8 +129,13 @@ test('菜品写接口拒绝未知字段、非法枚举和跨档口新增', async
 
 test('商家不能改删其他档口的菜品', async () => {
   assert.equal(
-    (await api.request('/dishes/dish-03', { method: 'PUT', token: merchant, body: { price: 19.9 } }))
-      .status,
+    (
+      await api.request('/dishes/dish-03', {
+        method: 'PUT',
+        token: merchant,
+        body: { price: 19.9 },
+      })
+    ).status,
     403,
   )
   assert.equal(
@@ -175,7 +186,10 @@ test('商家可更新本档口菜品，id/销量/评分不可篡改，删除后 
   assert.equal(patched.status, 200)
   assert.equal(patched.body.desc, '窗口现炒')
 
-  assert.equal((await api.request(`/dishes/${id}`, { method: 'DELETE', token: merchant })).status, 204)
+  assert.equal(
+    (await api.request(`/dishes/${id}`, { method: 'DELETE', token: merchant })).status,
+    204,
+  )
   assert.equal((await api.request(`/dishes/${id}`, { token: student })).status, 404)
 })
 
@@ -191,7 +205,10 @@ test('学生不能写菜品或档口，档口目录只读', async () => {
       .status,
     403,
   )
-  assert.equal((await api.request('/dishes/dish-01', { method: 'DELETE', token: student })).status, 403)
+  assert.equal(
+    (await api.request('/dishes/dish-01', { method: 'DELETE', token: student })).status,
+    403,
+  )
   assert.equal(
     (await api.request('/stalls', { method: 'POST', token: merchant, body: { name: '私开档口' } }))
       .status,
@@ -222,7 +239,12 @@ test('订单明细拒绝重复菜品、超量、夹带字段与未知顶层字�
   const duplicate = await api.request('/orders', {
     method: 'POST',
     token: student,
-    body: { items: [{ dishId: 'dish-01', qty: 1 }, { dishId: 'dish-01', qty: 2 }] },
+    body: {
+      items: [
+        { dishId: 'dish-01', qty: 1 },
+        { dishId: 'dish-01', qty: 2 },
+      ],
+    },
   })
   assert.equal(duplicate.status, 422)
   assert.equal(duplicate.body.code, 'INVALID_ITEMS')
@@ -319,13 +341,23 @@ test('商家推进本档口订单，学生在取餐后确认完成', async () =>
   assert.equal(confirmed.body.status, 'completed')
 
   assert.equal(
-    (await api.request(`/orders/${order.id}`, { method: 'PUT', token: student, body: { action: 'next' } }))
-      .status,
+    (
+      await api.request(`/orders/${order.id}`, {
+        method: 'PUT',
+        token: student,
+        body: { action: 'next' },
+      })
+    ).status,
     403,
   )
   assert.equal(
-    (await api.request(`/orders/${order.id}`, { method: 'PUT', token: merchant, body: { action: 'confirm' } }))
-      .status,
+    (
+      await api.request(`/orders/${order.id}`, {
+        method: 'PUT',
+        token: merchant,
+        body: { action: 'confirm' },
+      })
+    ).status,
     422,
   )
 })
@@ -369,4 +401,69 @@ test('目录查询参数可过滤，非法枚举返回 422', async () => {
 
   assert.equal((await api.request('/dishes?meal=brunch', { token: student })).status, 422)
   assert.equal((await api.request('/orders?status=unknown', { token: student })).status, 422)
+})
+
+test('评价只属于本人的已完成订单，修改星级后菜单和详情同步', async () => {
+  const order = await createOrder([{ dishId: 'dish-01', qty: 1 }])
+  const rate = (token, stars, dishId = 'dish-01') =>
+    api.request(`/orders/${order.id}/ratings/${dishId}`, { method: 'PUT', token, body: { stars } })
+  assert.equal((await rate(student, 4)).status, 409)
+  await api.request(`/orders/${order.id}`, {
+    method: 'PUT',
+    token: merchant,
+    body: { action: 'next' },
+  })
+  const summary = await api.request('/me/summary', { token: student })
+  assert.ok(summary.body.readyOrders >= 1)
+  await api.request(`/orders/${order.id}`, {
+    method: 'PUT',
+    token: student,
+    body: { action: 'confirm' },
+  })
+  assert.equal((await rate(secondStudent, 5)).status, 404)
+  assert.equal((await rate(merchant, 5)).status, 404)
+  assert.equal((await rate(student, 6)).status, 422)
+  assert.equal((await rate(student, 3, 'dish-03')).status, 404)
+  assert.equal((await rate(student, 4)).body.ratings['dish-01'], 4)
+  await rate(student, 5)
+  const dish = (await api.request('/dishes/dish-01', { token: student })).body
+  assert.deepEqual([dish.rating, dish.reviewCount], [5, 1])
+  const list = (await api.request('/dishes', { token: student })).body
+  assert.equal(list.find((row) => row.id === dish.id).rating, 5)
+})
+
+test('下架后学生列表与下单同步，商家管理保留菜品和库存状态', async () => {
+  const update = (listed) =>
+    api.request('/dishes/dish-02', { method: 'PUT', token: merchant, body: { listed } })
+  assert.equal((await update(false)).status, 200)
+  assert.equal((await api.request('/dishes/dish-02', { token: student })).status, 404)
+  const studentList = await api.request('/dishes?manage=1', { token: student })
+  assert.ok(!studentList.body.some((dish) => dish.id === 'dish-02'))
+  const manageList = await api.request('/dishes?manage=1', { token: merchant })
+  assert.ok(manageList.body.some((dish) => dish.id === 'dish-02' && dish.listed === false))
+  assert.equal(
+    (
+      await api.request('/orders', {
+        method: 'POST',
+        token: student,
+        body: { items: [{ dishId: 'dish-02', qty: 1 }] },
+      })
+    ).body.code,
+    'DISH_UNLISTED',
+  )
+  assert.equal((await update(true)).body.status, 'success')
+})
+
+test('相同结算重试只创建一单，复用标识更改明细会被拒绝', async () => {
+  const send = (qty) =>
+    api.request('/orders', {
+      method: 'POST',
+      token: student,
+      headers: { 'Idempotency-Key': 'aa'.repeat(16) },
+      body: { items: [{ dishId: 'dish-01', qty }] },
+    })
+  const [first, second] = await Promise.all([send(1), send(1)])
+  assert.deepEqual([first.status, second.status].sort(), [200, 201])
+  assert.equal(first.body.id, second.body.id)
+  assert.equal((await send(2)).status, 409)
 })

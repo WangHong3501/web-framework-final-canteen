@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright'
 import path from 'node:path'
 import fs from 'node:fs'
 
-const shots = path.resolve('../screenshots')
+const shots = path.resolve(process.env.SCREENSHOT_DIR || '.local/screenshots')
 fs.mkdirSync(shots, { recursive: true })
 
 async function demoLogin(page, role = 'student') {
@@ -104,15 +104,17 @@ test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增�
   await assertAccessible(page, 'admin-dishes')
   await page.screenshot({ path: path.join(shots, 'G5-17-档口菜品管理-桌面.png'), fullPage: true })
 
-  await page.getByTestId('toggle-dish-dish-11').click()
-  await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
-  await expect(page.getByText('「糖醋里脊」已上架')).toBeVisible()
-  await page.reload()
-  await expect(page.getByTestId('metric-danger')).toHaveText('0')
-
-  await page.getByTestId('toggle-dish-dish-11').click()
+  const soldDish = page.locator('tr', { hasText: '糖醋里脊' })
+  await soldDish.getByRole('button', { name: '下架' }).click()
   await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
   await expect(page.getByText('「糖醋里脊」已下架')).toBeVisible()
+  await page.reload()
+  await expect(soldDish).toContainText('已下架')
+  await expect(page.getByTestId('metric-danger')).toHaveText('0')
+  await soldDish.getByRole('button', { name: '上架' }).click()
+  await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
+  await expect(page.getByText('「糖醋里脊」已上架')).toBeVisible()
+  await expect(soldDish).toContainText('已售罄')
   await expect(page.getByTestId('metric-danger')).toHaveText('1')
   await expect(page.locator('.el-message')).toHaveCount(0)
 
