@@ -1,11 +1,9 @@
-<script setup>
-/**
- * 手机壳容器：在桌面浏览器中以真实手机形态展示 Vant 移动端点餐页，
- * 对应题目「Vant 移动端页在手机壳容器内展示」的要求。
- */
-defineProps({
-  label: { type: String, default: '移动端预览' },
-})
+<script>
+export default {
+  props: {
+    label: { type: String, default: '移动端预览' },
+  },
+}
 </script>
 
 <template>
@@ -57,7 +55,9 @@ defineProps({
   background: var(--white);
   border: 10px solid var(--gray-800);
   border-radius: 44px;
-  box-shadow: var(--shadow-4), 0 0 0 2px #0c1310;
+  box-shadow:
+    var(--shadow-4),
+    0 0 0 2px #0c1310;
   overflow: hidden;
 }
 .phone-frame__notch {
@@ -73,7 +73,7 @@ defineProps({
 }
 .phone-frame__screen {
   height: 720px;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   background: var(--canvas);
   scrollbar-width: none;

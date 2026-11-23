@@ -1,146 +1,190 @@
-<script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+<script>
+import OrderShell from '@/components/order/OrderShell.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ordersApi } from '@/api/orders'
 import { requestMessage } from '@/api/http'
 import { useCartStore } from '@/stores/cart'
-import { MEALS } from '@/shared/useMenu'
+import { mealLabel, resolveDishImage } from '@/components/dishes/dish-meta'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-
-const router = useRouter()
-const cart = useCartStore()
-const remark = ref('')
-const submitting = ref(false)
-const errorMsg = ref('')
-
-const mealLabel = computed(() => MEALS.find((m) => m.key === cart.meal)?.label || '午餐')
-
-function qtyChange(dishId, qty) {
-  cart.setQty(dishId, qty)
-}
-
-async function submitOrder() {
-  if (cart.isEmpty || submitting.value) return
-  submitting.value = true
-  errorMsg.value = ''
-  try {
-    const order = await ordersApi.create(cart.payload(remark.value))
-    cart.clear()
-    ElMessage.success('下单成功，正在为你备餐')
-    router.push({ name: 'order-detail', params: { id: order.id } })
-  } catch (error) {
-    errorMsg.value = requestMessage(error, '下单失败，请稍后重试。')
-    ElMessage.error(errorMsg.value)
-  } finally {
-    submitting.value = false
-  }
+import StallPicker from '@/components/order/StallPicker.vue'
+export default {
+  components: { OrderShell, AppIcon, PriceTag, EmptyState, StallPicker },
+  data: () => ({ selectedKey: '', remark: '', submitting: false, errorMsg: '' }),
+  computed: {
+    cart: () => useCartStore(),
+    group() {
+      return this.cart.byStall.find((item) => item.key === this.selectedKey) || this.cart.byStall[0]
+    },
+    mealLabel() {
+      return mealLabel(this.cart.meal)
+    },
+  },
+  methods: {
+    image(src) {
+      return resolveDishImage(src, import.meta.env.BASE_URL)
+    },
+    async clearCart() {
+      try {
+        await ElMessageBox.confirm('移除餐车内所有档口的菜品？', '清空餐车', {
+          confirmButtonText: '确认清空',
+          cancelButtonText: '保留菜品',
+        })
+      } catch {
+        return
+      }
+      this.cart.clear()
+      this.errorMsg = ''
+    },
+    async submitOrder() {
+      if (!this.group || this.submitting) return
+      this.submitting = true
+      this.errorMsg = ''
+      const groupKey = this.group.key
+      try {
+        const { payload, key } = this.cart.beginCheckout(this.group, this.remark)
+        const order = await ordersApi.create(payload, key)
+        this.cart.consume(payload.items, groupKey)
+        ElMessage.success('下单成功，正在为你备餐')
+        await this.$router.push({ name: 'order-detail', params: { id: order.id } })
+      } catch (error) {
+        this.errorMsg = requestMessage(error, '下单失败，请稍后重试。')
+      } finally {
+        this.submitting = false
+      }
+    },
+  },
 }
 </script>
 
 <template>
-  <div class="cart-page">
-    <button type="button" class="back-link" @click="$router.push('/menu')">
-      <AppIcon name="ArrowLeft" :size="17" /> 返回菜单
-    </button>
+  <OrderShell>
+    <div class="cart-page">
+      <button type="button" class="back-link" @click="$router.push('/menu')">
+        <AppIcon name="ArrowLeft" :size="17" /> 返回菜单
+      </button>
 
-    <div class="order-section-head">
-      <div>
-        <h2>确认订单</h2>
-        <p>核对菜品与数量，提交后到窗口凭码取餐</p>
-      </div>
-    </div>
-
-    <EmptyState
-      v-if="cart.isEmpty"
-      title="餐车还是空的"
-      detail="先去菜单挑几道喜欢的菜，再回来结算吧。"
-      action-label="去挑点好吃的"
-      icon="ShoppingCart"
-      @action="$router.push('/menu')"
-    />
-
-    <div v-else class="cart-layout">
-      <div class="cart-main">
-        <section v-for="group in cart.byStall" :key="group.stall" class="stall-block">
-          <header class="stall-block__head">
-            <span class="stall-block__icon"><AppIcon name="Store" :size="16" /></span>
-            <strong>{{ group.stall }}</strong>
-            <span class="stall-block__sub">小计 ¥{{ group.subtotal.toFixed(2) }}</span>
-          </header>
-
-          <div class="cart-line" v-for="item in group.items" :key="item.dishId">
-            <img :src="item.image" :alt="item.name" class="cart-line__img" />
-            <div class="cart-line__info">
-              <strong>{{ item.name }}</strong>
-              <span>¥{{ (item.priceCents / 100).toFixed(2) }} / 份</span>
-            </div>
-            <div class="qty-stepper">
-              <button class="is-minus" type="button" :aria-label="`减少${item.name}`" @click="qtyChange(item.dishId, item.qty - 1)">
-                <AppIcon name="Minus" :size="14" />
-              </button>
-              <strong>{{ item.qty }}</strong>
-              <button type="button" :aria-label="`增加${item.name}`" @click="qtyChange(item.dishId, item.qty + 1)">
-                <AppIcon name="Plus" :size="14" />
-              </button>
-            </div>
-            <strong class="cart-line__sum">¥{{ ((item.priceCents * item.qty) / 100).toFixed(2) }}</strong>
-            <button class="cart-line__remove" type="button" :aria-label="`移除${item.name}`" @click="cart.remove(item.dishId)">
-              <AppIcon name="Trash2" :size="15" />
-            </button>
-          </div>
-        </section>
-
-        <section class="remark-block">
-          <label for="cart-remark">备注口味（可选）</label>
-          <el-input
-            id="cart-remark"
-            v-model="remark"
-            type="textarea"
-            :rows="2"
-            maxlength="100"
-            show-word-limit
-            placeholder="例如：少放辣、不要香菜…"
-          />
-        </section>
-      </div>
-
-      <aside class="cart-summary">
-        <h3>订单信息</h3>
-        <div class="summary-row">
-          <span>用餐时段</span>
-          <strong>{{ mealLabel }}</strong>
+      <div class="order-section-head">
+        <div>
+          <h1>确认订单</h1>
+          <p>核对菜品与数量，提交后到窗口凭码取餐</p>
         </div>
-        <div class="summary-row">
-          <span>菜品数量</span>
-          <strong>{{ cart.count }} 件</strong>
-        </div>
-        <div class="summary-row">
-          <span>备餐时间</span>
-          <strong>约 15 分钟</strong>
-        </div>
-        <div class="summary-divider"></div>
-        <div class="summary-total">
-          <span>应付合计</span>
-          <PriceTag :value="cart.total" size="lg" />
-        </div>
-        <div v-if="errorMsg" class="summary-error" role="alert">
-          <AppIcon name="CircleAlert" :size="15" /> {{ errorMsg }}
-        </div>
-        <el-button
-          type="primary"
-          class="submit-btn"
-          :loading="submitting"
-          @click="submitOrder"
+        <el-button v-if="!cart.isEmpty" :disabled="submitting" @click="clearCart"
+          >清空餐车</el-button
         >
-          提交订单 · ¥{{ cart.total.toFixed(2) }}
-        </el-button>
-        <p class="summary-hint"><AppIcon name="Info" :size="13" /> 价格以提交时服务端核算为准</p>
-      </aside>
+      </div>
+
+      <EmptyState
+        v-if="cart.isEmpty"
+        title="餐车还是空的"
+        detail="先去菜单挑几道喜欢的菜，再回来结算吧。"
+        action-label="去挑点好吃的"
+        icon="ShoppingCart"
+        @action="$router.push('/menu')"
+      />
+
+      <div v-else class="cart-layout">
+        <div class="cart-main">
+          <section v-for="group in cart.byStall" :key="group.key" class="stall-block">
+            <header class="stall-block__head">
+              <span class="stall-block__icon"><AppIcon name="Store" :size="16" /></span>
+              <strong>{{ group.stall }}</strong>
+              <span class="stall-block__sub">小计 ¥{{ group.subtotal.toFixed(2) }}</span>
+            </header>
+
+            <div class="cart-line" v-for="item in group.items" :key="item.dishId">
+              <img :src="image(item.image)" :alt="item.name" class="cart-line__img" />
+              <div class="cart-line__info">
+                <strong>{{ item.name }}</strong>
+                <span>¥{{ (item.priceCents / 100).toFixed(2) }} / 份</span>
+              </div>
+              <div class="qty-stepper">
+                <button
+                  class="is-minus"
+                  type="button"
+                  :aria-label="`减少${item.name}`"
+                  @click="cart.setQty(item.dishId, item.qty - 1)"
+                >
+                  <AppIcon name="Minus" :size="14" />
+                </button>
+                <strong>{{ item.qty }}</strong>
+                <button
+                  type="button"
+                  :disabled="submitting || item.qty >= 20"
+                  :aria-label="`增加${item.name}`"
+                  @click="cart.setQty(item.dishId, item.qty + 1)"
+                >
+                  <AppIcon name="Plus" :size="14" />
+                </button>
+              </div>
+              <strong class="cart-line__sum"
+                >¥{{ ((item.priceCents * item.qty) / 100).toFixed(2) }}</strong
+              >
+              <button
+                class="cart-line__remove"
+                type="button"
+                :aria-label="`移除${item.name}`"
+                @click="cart.remove(item.dishId)"
+              >
+                <AppIcon name="Trash2" :size="15" />
+              </button>
+            </div>
+          </section>
+
+          <section class="remark-block">
+            <label for="cart-remark">备注口味（可选）</label>
+            <el-input
+              id="cart-remark"
+              v-model="remark"
+              type="textarea"
+              :rows="2"
+              maxlength="100"
+              show-word-limit
+              placeholder="例如：少放辣、不要香菜…"
+            />
+          </section>
+        </div>
+
+        <aside class="cart-summary">
+          <h3>订单信息</h3>
+          <StallPicker
+            :groups="cart.byStall"
+            :model-value="group.key"
+            :disabled="submitting"
+            @update:model-value="selectedKey = $event"
+          />
+          <div class="summary-row">
+            <span>取餐档口</span><strong>{{ group.stall }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>用餐时段</span>
+            <strong>{{ mealLabel }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>菜品数量</span>
+            <strong>{{ group.count }} 件</strong>
+          </div>
+          <div class="summary-row">
+            <span>备餐时间</span>
+            <strong>约 15 分钟</strong>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-total">
+            <span>应付合计</span>
+            <PriceTag :value="group.subtotal" size="lg" />
+          </div>
+          <div v-if="errorMsg" class="summary-error" role="alert">
+            <AppIcon name="CircleAlert" :size="15" /> {{ errorMsg }}
+          </div>
+          <el-button type="primary" class="submit-btn" :loading="submitting" @click="submitOrder">
+            提交订单 · ¥{{ group.subtotal.toFixed(2) }}
+          </el-button>
+          <p class="summary-hint"><AppIcon name="Info" :size="13" /> 价格以提交时服务端核算为准</p>
+        </aside>
+      </div>
     </div>
-  </div>
+  </OrderShell>
 </template>
 
 <style scoped>

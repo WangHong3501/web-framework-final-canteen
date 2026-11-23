@@ -56,12 +56,12 @@
   color: var(--forest);
 }
 
-.dish-topbar__nav a.is-active {
+.dish-topbar__nav a:is(.is-active, .router-link-active) {
   color: var(--forest);
   font-weight: var(--fw-semibold);
 }
 
-.dish-topbar__nav a.is-active::after {
+.dish-topbar__nav a:is(.is-active, .router-link-active)::after {
   content: '';
   position: absolute;
   left: 4px;

@@ -1,13 +1,16 @@
-<script setup>
+<script>
 import AppIcon from './AppIcon.vue'
 
-defineProps({
-  code: { type: String, required: true },
-  window: { type: String, default: '' },
-  eta: { type: String, default: '' },
-  hint: { type: String, default: '凭取餐码到窗口取餐' },
-  size: { type: String, default: 'md' },
-})
+export default {
+  props: {
+    code: { type: String, required: true },
+    window: { type: String, default: '' },
+    eta: { type: String, default: '' },
+    hint: { type: String, default: '凭取餐码到窗口取餐' },
+    size: { type: String, default: 'md' },
+  },
+  components: { AppIcon },
+}
 </script>
 
 <template>

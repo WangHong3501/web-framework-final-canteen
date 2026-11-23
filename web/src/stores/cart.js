@@ -23,7 +23,8 @@ function normalizeItem(item) {
     // 只读展示字段：移动端页面仍按 item.price 显示，金额计算一律用 priceCents
     price: priceCents / 100,
     stall: item.stall || '',
-    qty: Math.min(Math.max(Number(item.qty) || 1, 1), MAX_QTY),
+    stallId: item.stallId || '',
+    qty: Math.min(Math.max(Math.trunc(Number(item.qty)) || 1, 1), MAX_QTY),
   }
 }
 
@@ -34,6 +35,8 @@ function normalizeItem(item) {
  */
 export const useCartStore = defineStore('cart', {
   state: () => ({
+    ownerId: '',
+    attempts: {},
     items: [], // { dishId, name, image, priceCents, price, qty, stall }
     meal: 'lunch',
   }),
@@ -48,14 +51,26 @@ export const useCartStore = defineStore('cart', {
     isEmpty: (state) => state.items.length === 0,
     /** 按档口分组，用于确认订单与移动端点餐车展示 */
     byStall: (state) => {
-      const groups = {}
+      const idsByName = new Map(
+        state.items.filter((item) => item.stallId).map((item) => [item.stall, item.stallId]),
+      )
+      const groups = new Map()
       for (const item of state.items) {
-        const key = item.stall || '其他'
-        if (!groups[key]) groups[key] = { stall: key, items: [], subtotalCents: 0 }
-        groups[key].items.push(item)
-        groups[key].subtotalCents += centsOf(item) * item.qty
+        const key = item.stallId || idsByName.get(item.stall) || item.stall || item.dishId
+        if (!groups.has(key))
+          groups.set(key, {
+            key,
+            stall: item.stall || '未命名档口',
+            items: [],
+            count: 0,
+            subtotalCents: 0,
+          })
+        const group = groups.get(key)
+        group.items.push(item)
+        group.count += item.qty
+        group.subtotalCents += centsOf(item) * item.qty
       }
-      return Object.values(groups).map((group) => ({
+      return Array.from(groups.values(), (group) => ({
         ...group,
         subtotal: group.subtotalCents / 100,
       }))
@@ -63,13 +78,22 @@ export const useCartStore = defineStore('cart', {
   },
   actions: {
     /** 把刷新前留下的旧格式（price 元）统一迁成 priceCents */
+    bindAccount(id) {
+      if (this.ownerId && this.ownerId !== id) this.clear()
+      this.ownerId = id
+    },
     migrate() {
-      this.items = this.items.map(normalizeItem)
+      this.items = Array.isArray(this.items)
+        ? this.items.filter((item) => item?.dishId).map(normalizeItem)
+        : []
     },
     add(dish, qty = 1) {
+      if (!Number.isInteger(qty) || qty < 1) return
       const priceCents = toCents(dish.price)
       const existing = this.items.find((item) => item.dishId === dish.id)
       if (existing) {
+        existing.stallId = dish.stallId || existing.stallId
+        existing.stall = dish.stall || existing.stall
         existing.qty = Math.min(existing.qty + qty, MAX_QTY)
         // 菜单价格调整后，购物车按最新价格结算
         existing.priceCents = priceCents
@@ -81,6 +105,7 @@ export const useCartStore = defineStore('cart', {
             name: dish.name,
             image: dish.image,
             priceCents,
+            stallId: dish.stallId,
             stall: dish.stall || '',
             qty: Math.min(qty, MAX_QTY),
           }),
@@ -106,23 +131,41 @@ export const useCartStore = defineStore('cart', {
     },
     clear() {
       this.items = []
+      this.attempts = {}
       this.meal = 'lunch'
     },
     setMeal(meal) {
       this.meal = meal
     },
     /** 生成下单载荷，价格由服务端重新核算，这里只提交数量 */
-    payload(remark = '') {
+    beginCheckout(group, remark) {
+      const payload = this.payload(remark, group.items)
+      const signature = JSON.stringify(payload)
+      if (this.attempts[group.key]?.signature !== signature) {
+        const bytes = crypto.getRandomValues(new Uint8Array(16))
+        const key = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+        this.attempts[group.key] = { signature, key }
+      }
+      return { payload, key: this.attempts[group.key].key }
+    },
+    consume(lines, groupKey) {
+      if (groupKey) delete this.attempts[groupKey]
+      for (const { dishId, qty } of lines) {
+        const current = this.items.find((item) => item.dishId === dishId)
+        if (current) this.setQty(dishId, current.qty - qty)
+      }
+    },
+    payload(remark = '', items = this.items) {
       return {
         meal: this.meal,
         remark,
-        items: this.items.map((item) => ({ dishId: item.dishId, qty: item.qty })),
+        items: items.map(({ dishId, qty }) => ({ dishId, qty })),
       }
     },
   },
   persist: {
     key: 'shiguang-cart',
-    pick: ['items', 'meal'],
+    pick: ['ownerId', 'items', 'meal', 'attempts'],
     afterHydrate: (context) => context.store.migrate(),
   },
 })

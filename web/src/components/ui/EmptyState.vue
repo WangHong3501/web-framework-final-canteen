@@ -1,15 +1,17 @@
-<script setup>
+<script>
 import AppIcon from './AppIcon.vue'
 
-defineProps({
-  title: { type: String, required: true },
-  detail: { type: String, default: '' },
-  actionLabel: { type: String, default: '' },
-  icon: { type: String, default: 'Soup' },
-  compact: { type: Boolean, default: false },
-})
-
-defineEmits(['action'])
+export default {
+  props: {
+    title: { type: String, required: true },
+    detail: { type: String, default: '' },
+    actionLabel: { type: String, default: '' },
+    icon: { type: String, default: 'Soup' },
+    compact: { type: Boolean, default: false },
+  },
+  components: { AppIcon },
+  emits: ['action'],
+}
 </script>
 
 <template>

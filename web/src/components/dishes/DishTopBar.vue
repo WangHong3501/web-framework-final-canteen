@@ -12,6 +12,15 @@ export default {
     active: { type: String, default: 'menu' },
     skipTarget: { type: String, default: '#dish-main-content' },
   },
+  methods: {
+    focusMain() {
+      const main = document.querySelector(this.skipTarget)
+      if (main) {
+        main.tabIndex = -1
+        main.focus()
+      }
+    },
+  },
   computed: {
     ...mapStores(useUserStore, useCartStore),
     user() {
@@ -25,7 +34,7 @@ export default {
 </script>
 
 <template>
-  <a :href="skipTarget" class="skip-link">跳到页面内容</a>
+  <a :href="skipTarget" class="skip-link" @click.prevent="focusMain">跳到页面内容</a>
   <header class="dish-topbar">
     <div class="dish-topbar__inner">
       <router-link to="/menu" aria-label="食光校园菜单" class="brand-link">
@@ -36,14 +45,14 @@ export default {
         <router-link to="/menu" :class="{ 'is-active': active === 'menu' || active === 'dish' }">
           校园菜单
         </router-link>
-        <router-link to="/cart" class="dish-topbar__cart-link">
+        <router-link v-if="!userStore.isMerchant" to="/cart" class="dish-topbar__cart-link">
           <span>点餐车</span>
           <em v-if="cartCount > 0" class="dish-topbar__badge">{{ cartCount }}</em>
         </router-link>
         <router-link to="/orders">
           {{ userStore.isMerchant ? '订单工作台' : '我的订单' }}
         </router-link>
-        <router-link to="/mobile">移动端点餐</router-link>
+        <router-link v-if="!userStore.isMerchant" to="/mobile">移动端点餐</router-link>
         <router-link
           v-if="userStore.isMerchant"
           to="/admin/dishes"
@@ -51,6 +60,7 @@ export default {
         >
           档口管理
         </router-link>
+        <router-link v-if="userStore.isMerchant" to="/admin/overview">经营概览</router-link>
         <router-link to="/center/overview">个人中心</router-link>
       </nav>
 

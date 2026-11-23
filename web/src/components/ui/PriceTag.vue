@@ -1,37 +1,35 @@
-<script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
-  value: { type: [Number, String], required: true },
-  original: { type: [Number, String], default: null },
-  variant: { type: String, default: 'default' },
-  size: { type: String, default: 'md' },
-})
-
-const amount = computed(() => {
-  const num = Number(props.value)
-  return Number.isFinite(num) ? num : 0
-})
-
-const parts = computed(() => {
-  const text = amount.value.toFixed(2)
-  const [int, dec] = text.split('.')
-  return { int, dec }
-})
-
-const originalText = computed(() => {
-  if (props.original === null || props.original === undefined || props.original === '') return ''
-  const num = Number(props.original)
-  return Number.isFinite(num) ? num.toFixed(2) : ''
-})
-
-const discountBadge = computed(() => {
-  if (!originalText.value) return ''
-  const base = Number(originalText.value)
-  if (!base) return ''
-  const rate = Math.round((amount.value / base) * 10)
-  return rate < 10 ? `${rate}折` : ''
-})
+<script>
+export default {
+  props: {
+    value: { type: [Number, String], required: true },
+    original: { type: [Number, String], default: null },
+    variant: { type: String, default: 'default' },
+    size: { type: String, default: 'md' },
+  },
+  computed: {
+    amount() {
+      const num = Number(this.value)
+      return Number.isFinite(num) ? num : 0
+    },
+    parts() {
+      const text = this.amount.toFixed(2)
+      const [int, dec] = text.split('.')
+      return { int, dec }
+    },
+    originalText() {
+      if (this.original === null || this.original === undefined || this.original === '') return ''
+      const num = Number(this.original)
+      return Number.isFinite(num) ? num.toFixed(2) : ''
+    },
+    discountBadge() {
+      if (!this.originalText) return ''
+      const base = Number(this.originalText)
+      if (!base) return ''
+      const rate = Math.round((this.amount / base) * 10)
+      return rate < 10 ? `${rate}折` : ''
+    },
+  },
+}
 </script>
 
 <template>

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { authApi } from '@/api/auth'
+import { useCartStore } from './cart'
 import { accountApi } from '@/api/account'
 import { AUTH_STORAGE_KEY, authStorage, clearAuthStorage } from '@/utils/auth-storage'
 
@@ -26,6 +27,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     async login(credentials) {
       const result = await authApi.login(credentials)
+      useCartStore().bindAccount(result.user.id)
       this.$patch({
         user: result.user,
         token: result.token,

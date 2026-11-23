@@ -132,9 +132,11 @@ export default {
       else this.qty = next
     },
     addToCart() {
-      if (!this.dish || this.soldOut) return
-      this.cartStore.add(this.dish, this.qty)
-      ElMessage.success(`已加入 ${this.qty} 份「${this.dish.name}」`)
+      if (this.userStore.isMerchant || !this.dish || this.soldOut) return
+      const added = Math.min(this.qty, 20 - this.currentCartQty)
+      if (added <= 0) return
+      this.cartStore.add(this.dish, added)
+      ElMessage.success(`已加入 ${added} 份「${this.dish.name}」`)
     },
     goRelatedDish(id) {
       this.$router.push({ name: 'dish-detail', params: { id } })
@@ -199,7 +201,16 @@ export default {
               <p class="detail-desc">{{ dish.desc || '校园食堂每日新鲜现做，到窗口即可取餐。' }}</p>
 
               <div class="detail-stats">
-                <span><AppIcon name="Star" :size="15" /> {{ dish.rating ?? 0 }} 分</span>
+                <span
+                  ><AppIcon name="Star" :size="15" />
+                  {{
+                    dish.reviewCount
+                      ? `${dish.rating} 分 · ${dish.reviewCount} 条评价`
+                      : dish.rating
+                        ? `参考评分 ${dish.rating}`
+                        : '暂无评分'
+                  }}</span
+                >
                 <span><AppIcon name="ShoppingBag" :size="15" /> 已售 {{ dish.sales ?? 0 }}</span>
                 <span>
                   <AppIcon name="Store" :size="15" />
@@ -220,7 +231,7 @@ export default {
                 </div>
               </div>
 
-              <div class="detail-purchase">
+              <div v-if="!userStore.isMerchant" class="detail-purchase">
                 <div class="detail-price-box">
                   <PriceTag :value="dish.price" :original="dish.originalPrice" size="lg" />
                   <small class="detail-subtotal" data-testid="detail-subtotal">
@@ -252,7 +263,7 @@ export default {
                   <el-button
                     type="primary"
                     round
-                    :disabled="soldOut"
+                    :disabled="soldOut || currentCartQty >= 20"
                     data-testid="detail-add-btn"
                     @click="addToCart"
                   >
@@ -262,7 +273,11 @@ export default {
                 </div>
               </div>
 
-              <p v-if="currentCartQty > 0" class="detail-cart-hint" data-testid="detail-cart-hint">
+              <p
+                v-if="!userStore.isMerchant && currentCartQty > 0"
+                class="detail-cart-hint"
+                data-testid="detail-cart-hint"
+              >
                 点餐车中已有 {{ currentCartQty }} 份该菜品，
                 <router-link to="/cart">去点餐车结算</router-link>
               </p>

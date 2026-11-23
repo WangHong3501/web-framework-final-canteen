@@ -112,8 +112,7 @@ function validateSeedData(db) {
       errors.push(`${label}.tags 必须是最多 3 项的数组`)
     else
       for (const [tagIndex, tag] of dish.tags.entries()) {
-        if (!isText(tag?.text, { max: 8 }))
-          errors.push(`${label}.tags[${tagIndex}].text 不合法`)
+        if (!isText(tag?.text, { max: 8 })) errors.push(`${label}.tags[${tagIndex}].text 不合法`)
         if (!TAG_TYPES.includes(tag?.type))
           errors.push(`${label}.tags[${tagIndex}].type 不在枚举内`)
       }
@@ -153,7 +152,10 @@ function validateSeedData(db) {
 function assertSeed(db, source = 'db.json') {
   const errors = validateSeedData(db)
   if (!errors.length) return
-  const detail = errors.slice(0, 12).map((message) => `- ${message}`).join('\n')
+  const detail = errors
+    .slice(0, 12)
+    .map((message) => `- ${message}`)
+    .join('\n')
   const more = errors.length > 12 ? `\n- 其余 ${errors.length - 12} 条从略` : ''
   throw new Error(`种子数据校验失败（${source}）：\n${detail}${more}`)
 }

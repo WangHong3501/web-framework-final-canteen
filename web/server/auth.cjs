@@ -126,14 +126,19 @@ function registerAuth(server, db, options = {}) {
     const orders = db
       .get('orders')
       .value()
-      .filter((order) => String(order.userId) === String(req.auth.user.id))
+      .filter((order) =>
+        req.auth.user.role === 'merchant'
+          ? options.ownsOrder(order, req.auth.user)
+          : String(order.userId) === String(req.auth.user.id),
+      )
     return res.json({
       totalOrders: orders.length,
       pendingOrders: orders.filter((order) => order.status === 'pending').length,
+      readyOrders: orders.filter((order) => order.status === 'ready').length,
       completedOrders: orders.filter((order) => order.status === 'completed').length,
       recentOrders: orders
-        .slice(-3)
-        .reverse()
+        .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
+        .slice(0, 3)
         .map(({ id, status, total, createdAt }) => ({ id, status, total, createdAt })),
     })
   })

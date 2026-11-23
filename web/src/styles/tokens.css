@@ -23,11 +23,11 @@
   --brand-900: #142e21;
 
   /* ---------- 2. 中性色阶（绿灰，层级严格映射） ---------- */
-  --gray-50: #f6f7f3;  /* 页面背景 */
+  --gray-50: #f6f7f3; /* 页面背景 */
   --gray-100: #eef0ea;
   --gray-200: #e5e9e0; /* 分割线 / 边框 */
   --gray-300: #d7dcd2;
-  --gray-400: #8a948b; /* 占位文字 */
+  --gray-400: #626e65; /* 占位文字 */
   --gray-500: #586653; /* 辅助文字 */
   --gray-600: #44554a; /* 正文文字 */
   --gray-700: #24352c; /* 一级标题 */
@@ -50,17 +50,17 @@
   --info-line: #e2e6dd;
 
   /* ---------- 4. 食堂专属语义色 ---------- */
-  --sem-brand: var(--brand-700);       /* 招牌 */
+  --sem-brand: var(--brand-700); /* 招牌 */
   --sem-brand-bg: #eef4e4;
-  --sem-new: var(--brand-800);         /* 新品 */
+  --sem-new: var(--brand-800); /* 新品 */
   --sem-new-bg: var(--leaf);
-  --sem-sold: var(--gray-500);         /* 售罄 */
+  --sem-sold: var(--gray-500); /* 售罄 */
   --sem-sold-bg: var(--gray-200);
-  --sem-spice: #b4552f;                /* 辣度 */
+  --sem-spice: #954320; /* 辣度 */
   --sem-spice-bg: #fbece3;
-  --sem-veg: var(--success-600);       /* 素食 */
+  --sem-veg: var(--success-600); /* 素食 */
   --sem-veg-bg: var(--success-100);
-  --sem-halal: #7b6b42;                /* 清真 */
+  --sem-halal: #6e5c34; /* 清真 */
   --sem-halal-bg: #f2ecd8;
 
   /* 语义边框（由对应语义色衍生，供标签/取餐码复用） */
@@ -71,7 +71,7 @@
   --pickup-bg-a: #f3f7ec;
   --pickup-bg-b: #fbfcf8;
   --pickup-line: #cfdcc0;
-  --focus-ring: #6f9b55;               /* 统一键盘焦点环 */
+  --focus-ring: #6f9b55; /* 统一键盘焦点环 */
 
   /* ---------- 5. 语义别名（兼容既有页面） ---------- */
   --forest: var(--brand-700);
@@ -131,11 +131,11 @@
   --space-9: 48px;
 
   /* ---------- 8. 圆角体系（仅四档 + 胶囊） ---------- */
-  --radius-xs: 4px;   /* 小标签 */
+  --radius-xs: 4px; /* 小标签 */
   --radius-sm: 8px;
-  --radius-md: 10px;  /* 按钮 / 输入框 */
-  --radius-lg: 12px;  /* 卡片 */
-  --radius-xl: 16px;  /* 大卡片 */
+  --radius-md: 10px; /* 按钮 / 输入框 */
+  --radius-lg: 12px; /* 卡片 */
+  --radius-xl: 16px; /* 大卡片 */
   --radius-2xl: 20px; /* 弹窗 */
   --radius-pill: 999px;
 
@@ -160,7 +160,7 @@
   --z-toast: 3000;
 
   /* ---------- 12. 组件尺寸（桌面 / 移动触控） ---------- */
-  --size-control: 44px;   /* 桌面控件高度 */
+  --size-control: 44px; /* 桌面控件高度 */
   --size-control-mobile: 44px; /* 移动端触控高度（≥44） */
   --size-control-sm: 36px;
 

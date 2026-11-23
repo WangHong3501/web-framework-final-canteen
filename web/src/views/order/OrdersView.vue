@@ -1,236 +1,259 @@
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+import OrderShell from '@/components/order/OrderShell.vue'
 import { ElMessage } from 'element-plus'
 import { ordersApi } from '@/api/orders'
-import { catalogApi } from '@/api/catalog'
+import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useUserStore } from '@/stores/user'
+import { STATUS_LABEL, STATUS_TYPE, formatOrderTime } from '@/shared/order'
+import { resolveDishImage, isDishSoldOut } from '@/components/dishes/dish-meta'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import OrderStatusFlow from '@/components/ui/OrderStatusFlow.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
-const router = useRouter()
-const user = useUserStore()
-const orders = ref([])
-const suggestions = ref([])
-const loading = ref(true)
-const errorMsg = ref('')
-const actingId = ref('')
-const filter = ref('all')
-
-const STATUS_LABEL = {
-  pending: '待支付', preparing: '备餐中', ready: '待取餐', completed: '已完成', refunded: '已退款',
-}
-const STATUS_TYPE = {
-  pending: 'warning', preparing: 'info', ready: 'brand', completed: 'success', refunded: 'sold',
-}
 const FILTERS = [
   { key: 'all', label: '全部' },
   { key: 'active', label: '进行中' },
   { key: 'completed', label: '已完成' },
 ]
-
-const visibleOrders = computed(() => {
-  const list = [...orders.value].reverse()
-  if (filter.value === 'active') return list.filter((o) => ['preparing', 'ready'].includes(o.status))
-  if (filter.value === 'completed') return list.filter((o) => o.status === 'completed')
-  return list
-})
-const activeCount = computed(() => orders.value.filter((o) => ['preparing', 'ready'].includes(o.status)).length)
-
-async function load() {
-  loading.value = true
-  errorMsg.value = ''
-  try {
-    orders.value = await ordersApi.list()
-  } catch (error) {
-    errorMsg.value = requestMessage(error, '订单加载失败。')
-  } finally {
-    loading.value = false
-  }
+export default {
+  components: { OrderShell, AppIcon, PriceTag, OrderStatusFlow, EmptyState },
+  data: () => ({
+    orders: [],
+    suggestions: [],
+    loading: true,
+    errorMsg: '',
+    actingId: '',
+    filter: 'all',
+    FILTERS,
+    STATUS_TYPE,
+    STATUS_LABEL,
+  }),
+  computed: {
+    user: () => useUserStore(),
+    activeOrders() {
+      return this.orders.filter((o) => ['pending', 'preparing', 'ready'].includes(o.status))
+    },
+    activeCount() {
+      return this.activeOrders.length
+    },
+    visibleOrders() {
+      if (this.filter === 'active') return this.activeOrders
+      if (this.filter === 'completed') return this.orders.filter((o) => o.status === 'completed')
+      return this.orders
+    },
+  },
+  mounted() {
+    this.load()
+    this.loadSuggestions()
+  },
+  methods: {
+    formatTime: formatOrderTime,
+    image(src) {
+      return resolveDishImage(src, import.meta.env.BASE_URL)
+    },
+    async load() {
+      this.loading = true
+      this.errorMsg = ''
+      try {
+        this.orders = await ordersApi.list()
+      } catch (error) {
+        this.errorMsg = requestMessage(error, '订单加载失败。')
+      } finally {
+        this.loading = false
+      }
+    },
+    async loadSuggestions() {
+      try {
+        const list = await dishesApi.list(
+          this.user.isMerchant ? { stallId: this.user.user.stallId } : {},
+        )
+        this.suggestions = list.filter((dish) => !isDishSoldOut(dish)).slice(0, 4)
+      } catch {
+        this.suggestions = []
+      }
+    },
+    async changeStatus(order, action) {
+      if (this.actingId) return
+      this.actingId = order.id
+      try {
+        await ordersApi[action](order.id)
+        ElMessage.success(action === 'confirm' ? '已确认取餐' : '订单状态已更新')
+        await this.load()
+      } catch (error) {
+        ElMessage.error(requestMessage(error))
+      } finally {
+        this.actingId = ''
+      }
+    },
+  },
 }
-
-// 空订单页不再大片留白：补一条真实菜品推荐，只读，不影响订单逻辑。
-async function loadSuggestions() {
-  try {
-    const list = await catalogApi.dishes()
-    suggestions.value = (Array.isArray(list) ? list : [])
-      .filter((dish) => dish.status !== 'danger' && !dish.soldOut)
-      .slice(0, 8)
-  } catch {
-    suggestions.value = []
-  }
-}
-
-async function advance(order) {
-  actingId.value = order.id
-  try {
-    const updated = await ordersApi.advance(order.id)
-    const idx = orders.value.findIndex((o) => o.id === order.id)
-    if (idx >= 0) orders.value[idx] = updated
-    ElMessage.success('订单状态已更新')
-  } catch (error) {
-    ElMessage.error(requestMessage(error))
-  } finally {
-    actingId.value = ''
-  }
-}
-
-async function confirm(order) {
-  actingId.value = order.id
-  try {
-    const updated = await ordersApi.confirm(order.id)
-    const idx = orders.value.findIndex((o) => o.id === order.id)
-    if (idx >= 0) orders.value[idx] = updated
-    ElMessage.success('已确认取餐')
-  } catch (error) {
-    ElMessage.error(requestMessage(error))
-  } finally {
-    actingId.value = ''
-  }
-}
-
-function formatTime(value) {
-  if (!value) return ''
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
-}
-
-onMounted(() => {
-  load()
-  loadSuggestions()
-})
 </script>
 
 <template>
-  <div class="orders-page">
-    <div class="order-section-head">
-      <div>
-        <h2>{{ user.isMerchant ? '订单工作台' : '我的订单' }}</h2>
-        <p>{{ user.isMerchant ? `当前 ${activeCount} 笔订单进行中` : '每一餐的好食光，都值得记住' }}</p>
+  <OrderShell>
+    <div class="orders-page">
+      <div class="order-section-head">
+        <div>
+          <h1>{{ user.isMerchant ? '订单工作台' : '我的订单' }}</h1>
+          <p>
+            {{
+              user.isMerchant
+                ? `当前 ${activeCount} 笔订单进行中`
+                : '查看备餐进度、取餐码和历史订单'
+            }}
+          </p>
+        </div>
+        <el-button v-if="!user.isMerchant" type="primary" @click="$router.push('/menu')">
+          <AppIcon name="Plus" :size="16" /> 再点一单
+        </el-button>
       </div>
-      <el-button v-if="!user.isMerchant" type="primary" @click="$router.push('/menu')">
-        <AppIcon name="Plus" :size="16" /> 再点一单
-      </el-button>
-    </div>
 
-    <div class="filter-row">
-      <button
-        v-for="f in FILTERS"
-        :key="f.key"
-        type="button"
-        class="category-chip"
-        :class="{ 'is-active': filter === f.key }"
-        @click="filter = f.key"
-      >
-        {{ f.label }}
-      </button>
-    </div>
+      <div class="filter-row">
+        <button
+          v-for="f in FILTERS"
+          :aria-pressed="filter === f.key"
+          :key="f.key"
+          type="button"
+          class="category-chip"
+          :class="{ 'is-active': filter === f.key }"
+          @click="filter = f.key"
+        >
+          {{ f.label }}
+        </button>
+      </div>
 
-    <div v-if="loading" class="loading-block">正在加载订单…</div>
-    <div v-else-if="errorMsg" class="error-block" role="alert">
-      <AppIcon name="CircleAlert" :size="22" />
-      <p>{{ errorMsg }}</p>
-      <el-button @click="load">重试</el-button>
-    </div>
-    <template v-else-if="!visibleOrders.length">
-      <EmptyState
-        :title="filter === 'all' ? '还没有订单记录' : '这个分类下没有订单'"
-        :detail="filter === 'all' ? '去菜单挑几道喜欢的菜，开启今天的好食光。' : '换个筛选条件看看，或去菜单再点一单。'"
-        action-label="去点餐"
-        icon="ReceiptText"
-        @action="$router.push('/menu')"
-      />
+      <div v-if="loading" class="loading-block">正在加载订单…</div>
+      <div v-else-if="errorMsg" class="error-block" role="alert">
+        <AppIcon name="CircleAlert" :size="22" />
+        <p>{{ errorMsg }}</p>
+        <el-button @click="load">重试</el-button>
+      </div>
+      <template v-else-if="!visibleOrders.length">
+        <EmptyState
+          :title="filter === 'all' ? '还没有订单记录' : '这个分类下没有订单'"
+          :detail="
+            filter === 'all'
+              ? '去菜单挑几道喜欢的菜，开启今天的好食光。'
+              : '换个筛选条件看看，或去菜单再点一单。'
+          "
+          action-label="去点餐"
+          icon="ReceiptText"
+          @action="$router.push('/menu')"
+        />
 
-      <section v-if="suggestions.length" class="suggest-strip" aria-label="今日推荐菜品">
-        <div class="suggest-strip__head">
-          <div>
-            <h3>{{ user.isMerchant ? '本档口今日菜品' : '今天吃点好的' }}</h3>
-            <p>{{ user.isMerchant ? '菜品状态一目了然，方便随时调整。' : '还没想好吃什么？先看看大家常点的几道。' }}</p>
+        <section v-if="suggestions.length" class="suggest-strip" aria-label="今日推荐菜品">
+          <div class="suggest-strip__head">
+            <div>
+              <h3>{{ user.isMerchant ? '本档口今日菜品' : '今天吃点好的' }}</h3>
+              <p>
+                {{
+                  user.isMerchant
+                    ? '菜品状态一目了然，方便随时调整。'
+                    : '还没想好吃什么？先看看大家常点的几道。'
+                }}
+              </p>
+            </div>
+            <button type="button" class="suggest-strip__more" @click="$router.push('/menu')">
+              {{ user.isMerchant ? '查看菜品' : '看看全部菜品' }}
+              <AppIcon name="ArrowRight" :size="16" />
+            </button>
           </div>
-          <button type="button" class="suggest-strip__more" @click="router.push('/menu')">
-            {{ user.isMerchant ? '查看菜品' : '看看全部菜品' }}
-            <AppIcon name="ArrowRight" :size="16" />
-          </button>
-        </div>
-        <div class="suggest-strip__grid">
-          <button
-            v-for="dish in suggestions"
-            :key="dish.id"
-            type="button"
-            class="suggest-card"
-            @click="router.push({ name: 'dish-detail', params: { id: dish.id } })"
-          >
-            <img :src="dish.image" :alt="dish.name" />
-            <span class="suggest-card__body">
-              <strong>{{ dish.name }}</strong>
-              <PriceTag :value="dish.price" size="sm" />
+          <div class="suggest-strip__grid">
+            <button
+              v-for="dish in suggestions"
+              :key="dish.id"
+              type="button"
+              class="suggest-card"
+              @click="$router.push({ name: 'dish-detail', params: { id: dish.id } })"
+            >
+              <img :src="image(dish.image)" :alt="dish.name" />
+              <span class="suggest-card__body">
+                <strong>{{ dish.name }}</strong>
+                <PriceTag :value="dish.price" size="sm" />
+              </span>
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <div v-else class="order-list">
+        <article v-for="order in visibleOrders" :key="order.id" class="order-row">
+          <div class="order-row__head">
+            <div class="order-row__id">
+              <strong>{{ order.stallName || '取餐订单' }}</strong><span>{{ order.id }}</span>
+              <span>{{ formatTime(order.createdAt) }}</span>
+            </div>
+            <span class="order-row__status" :class="`st-${STATUS_TYPE[order.status]}`">
+              {{ STATUS_LABEL[order.status] }}
             </span>
-          </button>
-        </div>
-      </section>
-    </template>
-
-    <div v-else class="order-list">
-      <article v-for="order in visibleOrders" :key="order.id" class="order-row">
-        <div class="order-row__head">
-          <div class="order-row__id">
-            <strong>{{ order.id }}</strong>
-            <span>{{ formatTime(order.createdAt) }}</span>
           </div>
-          <span class="order-row__status" :class="`st-${STATUS_TYPE[order.status]}`">
-            {{ STATUS_LABEL[order.status] }}
-          </span>
-        </div>
 
-        <div class="order-row__body">
-          <div class="order-row__thumbs">
-            <img v-for="item in order.items.slice(0, 4)" :key="item.dishId" :src="item.image" :alt="item.name" />
-            <span v-if="order.items.length > 4" class="more">+{{ order.items.length - 4 }}</span>
+          <div class="order-row__body">
+            <div class="order-row__thumbs">
+              <img
+                v-for="item in order.items.slice(0, 4)"
+                :key="item.dishId"
+                :src="image(item.image)"
+                :alt="item.name"
+              />
+              <span v-if="order.items.length > 4" class="more">+{{ order.items.length - 4 }}</span>
+            </div>
+            <div class="order-row__desc">
+              {{ order.items.map((i) => `${i.name}×${i.qty}`).join('、') }}
+            </div>
+            <PriceTag :value="order.total" size="md" />
           </div>
-          <div class="order-row__desc">
-            {{ order.items.map((i) => `${i.name}×${i.qty}`).join('、') }}
-          </div>
-          <PriceTag :value="order.total" size="md" />
-        </div>
 
-        <OrderStatusFlow :status="order.status" compact />
+          <OrderStatusFlow :status="order.status" compact />
 
-        <div class="order-row__foot">
-          <span v-if="order.pickupCode && ['preparing', 'ready'].includes(order.status)" class="pickup-inline">
-            <AppIcon name="Ticket" :size="15" /> 取餐码 <strong>{{ order.pickupCode }}</strong>
-          </span>
-          <span v-else></span>
-          <div class="order-row__actions">
-            <el-button size="small" text @click="router.push({ name: 'order-detail', params: { id: order.id } })">
-              查看详情
-            </el-button>
-            <el-button
-              v-if="user.isMerchant && ['pending', 'preparing', 'ready'].includes(order.status)"
-              size="small"
-              type="primary"
-              :loading="actingId === order.id"
-              @click="advance(order)"
+          <div class="order-row__foot">
+            <span
+              v-if="order.pickupCode && ['preparing', 'ready'].includes(order.status)"
+              class="pickup-inline"
             >
-              推进状态
-            </el-button>
-            <el-button
-              v-if="!user.isMerchant && order.status === 'ready'"
-              size="small"
-              type="primary"
-              :loading="actingId === order.id"
-              @click="confirm(order)"
-            >
-              我已取餐
-            </el-button>
+              <AppIcon name="Ticket" :size="15" /> 取餐码 <strong>{{ order.pickupCode }}</strong>
+            </span>
+            <span v-else></span>
+            <div class="order-row__actions">
+              <el-button
+                size="small"
+                text
+                @click="$router.push({ name: 'order-detail', params: { id: order.id } })"
+              >
+                查看详情
+              </el-button>
+              <el-button
+                v-if="
+                  user.isMerchant &&
+                  order.ownStall &&
+                  ['pending', 'preparing', 'ready'].includes(order.status)
+                "
+                size="small"
+                type="primary"
+                :loading="actingId === order.id"
+                @click="changeStatus(order, 'advance')"
+              >
+                {{
+                  { pending: '开始备餐', preparing: '通知取餐', ready: '完成交付' }[order.status]
+                }}
+              </el-button>
+              <el-button
+                v-if="!user.isMerchant && order.status === 'ready'"
+                size="small"
+                type="primary"
+                :loading="actingId === order.id"
+                @click="changeStatus(order, 'confirm')"
+              >
+                我已取餐
+              </el-button>
+            </div>
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
-  </div>
+  </OrderShell>
 </template>
 
 <style scoped>
@@ -313,11 +336,26 @@ onMounted(() => {
   font-size: var(--fs-12);
   font-weight: var(--fw-medium);
 }
-.st-warning { color: var(--warning-600); background: var(--warning-100); }
-.st-info { color: var(--info-600); background: var(--info-100); }
-.st-brand { color: var(--sem-brand); background: var(--sem-brand-bg); }
-.st-success { color: var(--success-600); background: var(--success-100); }
-.st-sold { color: var(--white); background: var(--sem-sold); }
+.st-warning {
+  color: var(--warning-600);
+  background: var(--warning-100);
+}
+.st-info {
+  color: var(--info-600);
+  background: var(--info-100);
+}
+.st-brand {
+  color: var(--sem-brand);
+  background: var(--sem-brand-bg);
+}
+.st-success {
+  color: var(--success-600);
+  background: var(--success-100);
+}
+.st-sold {
+  color: var(--white);
+  background: var(--sem-sold);
+}
 .order-row__body {
   display: flex;
   align-items: center;

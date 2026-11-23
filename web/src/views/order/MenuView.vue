@@ -14,7 +14,6 @@ import FoodCard from '@/components/ui/FoodCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
-import QuickEntries from '@/components/ui/QuickEntries.vue'
 import {
   DISH_CATEGORIES,
   DISH_MEALS,
@@ -24,7 +23,6 @@ import {
 } from '@/components/dishes/dish-meta'
 
 const MEAL_OPTIONS_SET = new Set(DISH_MEALS.map((item) => item.key))
-const MEAL_KEYS = { breakfast: 'breakfast', lunch: 'lunch', dinner: 'dinner', night: 'night' }
 
 export default {
   components: {
@@ -35,7 +33,6 @@ export default {
     EmptyState,
     AppIcon,
     PriceTag,
-    QuickEntries,
   },
   data() {
     const query = this.$route.query
@@ -77,10 +74,10 @@ export default {
       return this.dishes.filter((item) => !this.soldOut(item)).length
     },
     stallCount() {
-      return this.stalls.length || 4
+      return this.stalls.length
     },
     cartCount() {
-      return this.cartStore.count
+      return this.userStore.isMerchant ? 0 : this.cartStore.count
     },
     hasActiveFilter() {
       return (
@@ -180,7 +177,7 @@ export default {
       return this.cartStore.items.find((item) => item.dishId === id)?.qty || 0
     },
     addDish(dish) {
-      if (this.soldOut(dish)) return
+      if (this.userStore.isMerchant || this.soldOut(dish) || this.qtyOf(dish.id) >= 20) return
       this.cartStore.add(dish, 1)
       ElMessage({ message: `已加入「${dish.name}」`, type: 'success', duration: 1400 })
     },
@@ -195,25 +192,6 @@ export default {
       this.stallId = 'all'
       this.category = '全部'
       this.keyword = ''
-    },
-    onQuickEntry(key) {
-      if (key === 'order') return this.resetFilters()
-      if (key === 'orders') return this.$router.push('/orders')
-      if (key === 'cart') return this.$router.push('/cart')
-      if (MEAL_KEYS[key]) {
-        this.resetFilters()
-        this.meal = MEAL_KEYS[key]
-        return
-      }
-      if (key === 'veg') {
-        this.resetFilters()
-        this.category = '轻食蔬菜'
-        return
-      }
-      if (key === 'signature') {
-        this.resetFilters()
-        this.keyword = '招牌'
-      }
     },
   },
 }
@@ -237,9 +215,8 @@ export default {
     <main id="dish-main-content" class="dish-main">
       <div class="menu-page">
         <section class="order-hero order-enter">
-          <span class="order-hero__eyebrow">SHIGUANG · CAMPUS CANTEEN</span>
-          <h1>好好吃饭，<br />是每天的头条大事。</h1>
-          <p>今天想吃点什么？按食堂档口与餐次挑一款喜欢的，温热新鲜，到窗口即可取餐。</p>
+          <h1>校园点餐</h1>
+          <p>选档口、挑菜品，凭码到窗口取餐。</p>
           <div class="order-hero__meta">
             <div>
               <strong>{{ dishCount }}</strong><span>全部菜品</span>
@@ -248,18 +225,13 @@ export default {
               <strong>{{ availableCount }}</strong><span>现在可做</span>
             </div>
             <div>
-              <strong>{{ stallCount }}</strong><span>人气档口</span>
+              <strong>{{ stallCount }}</strong><span>供应档口</span>
             </div>
           </div>
           <div class="order-hero__visual" aria-hidden="true">
-            <img :src="`${assetBase}images/fresh-bowl.jpg`" alt="" />
-            <span>今日现做 · 到店即取</span>
+            <img :src="`${assetBase}images/dish-01.webp`" alt="" />
           </div>
         </section>
-
-        <div class="menu-quick">
-          <QuickEntries :columns="8" @select="onQuickEntry" />
-        </div>
 
         <DishStallTabs
           v-model="stallId"
@@ -278,7 +250,7 @@ export default {
         <div class="order-section-head">
           <div>
             <h2>今日菜单</h2>
-            <p>按档口、餐次与菜品分类挑选，已售罄菜品会明确标注</p>
+            <p>按档口、餐次或菜名筛选</p>
           </div>
         </div>
 
@@ -350,7 +322,7 @@ export default {
                 >
                   详情
                 </button>
-                <div v-if="qtyOf(dish.id) > 0" class="qty-stepper">
+                <div v-if="!userStore.isMerchant && qtyOf(dish.id) > 0" class="qty-stepper">
                   <button
                     class="is-minus"
                     type="button"
@@ -360,12 +332,17 @@ export default {
                     <AppIcon name="Minus" :size="14" />
                   </button>
                   <strong>{{ qtyOf(dish.id) }}</strong>
-                  <button type="button" :aria-label="`增加${dish.name}`" @click="addDish(dish)">
+                  <button
+                    type="button"
+                    :disabled="qtyOf(dish.id) >= 20 || soldOut(dish)"
+                    :aria-label="`增加${dish.name}`"
+                    @click="addDish(dish)"
+                  >
                     <AppIcon name="Plus" :size="14" />
                   </button>
                 </div>
                 <button
-                  v-else
+                  v-else-if="!userStore.isMerchant"
                   class="add-btn"
                   type="button"
                   :disabled="soldOut(dish)"
@@ -389,7 +366,11 @@ export default {
         />
 
         <Transition name="cart-bar">
-          <div v-if="cartCount > 0" class="cart-bar" data-testid="menu-cart-bar">
+          <div
+            v-if="!userStore.isMerchant && cartCount > 0"
+            class="cart-bar"
+            data-testid="menu-cart-bar"
+          >
             <span class="cart-bar__basket">
               <AppIcon name="ShoppingCart" :size="22" />
               <span class="cart-bar__badge">{{ cartCount }}</span>
@@ -420,49 +401,54 @@ export default {
   margin: 0 auto;
   padding-bottom: var(--space-8);
 }
-.menu-page :deep(.order-hero h1) {
-  font-size: var(--fs-30);
+.menu-page .order-hero {
+  padding: 24px clamp(20px, 4vw, 44px);
+  min-height: 166px;
+  margin-bottom: 16px;
 }
-.menu-page :deep(.order-hero) {
-  min-height: 280px;
+.menu-page .order-hero h1 {
+  font-size: clamp(26px, 3vw, 38px);
+}
+.menu-page .order-hero__meta {
+  margin-top: 14px;
+}
+.menu-page .order-hero__meta div {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
 }
 .order-hero__visual {
   position: absolute;
-  right: var(--space-9);
-  top: 50%;
-  width: 232px;
-  height: 232px;
-  transform: translateY(-50%);
+  inset: 0 0 0 auto;
+  width: 40%;
+  z-index: -1;
 }
 .order-hero__visual img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
-  border: 6px solid var(--on-brand-3);
-  box-shadow: var(--shadow-4);
+  object-position: center 51%;
 }
-.order-hero__visual span {
+.order-hero__visual::after {
+  content: '';
   position: absolute;
-  left: 50%;
-  bottom: calc(-1 * var(--space-2));
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--forest);
-  font-size: var(--fs-12);
-  font-weight: var(--fw-semibold);
-  box-shadow: var(--shadow-2);
+  inset: 0;
+  background: linear-gradient(90deg, var(--brand-700), transparent 52%);
 }
-@media (max-width: 1180px) {
-  .order-hero__visual {
-    display: none;
+@media (max-width: 680px) {
+  .menu-page .order-hero {
+    min-height: 145px;
   }
-}
-.menu-quick {
-  margin-top: var(--space-5);
+  .order-hero__visual {
+    width: 34%;
+    opacity: 0.55;
+  }
+  .menu-page .order-hero p {
+    max-width: 70%;
+  }
+  .menu-page .order-hero__meta {
+    gap: 12px;
+  }
 }
 .menu-search {
   width: 280px;

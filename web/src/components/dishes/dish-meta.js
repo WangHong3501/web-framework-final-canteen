@@ -24,6 +24,19 @@ export const DISH_SPICE_OPTIONS = [
 ]
 
 export const DISH_IMAGE_OPTIONS = [
+  { value: '/images/dish-01.webp', label: '招牌红烧肉饭' },
+  { value: '/images/dish-02.webp', label: '香煎鸡腿饭' },
+  { value: '/images/dish-03.webp', label: '元气藜麦轻食碗' },
+  { value: '/images/dish-04.webp', label: '宫保鸡丁' },
+  { value: '/images/dish-05.webp', label: '麻婆豆腐' },
+  { value: '/images/dish-06.webp', label: '牛肉拉面' },
+  { value: '/images/dish-07.webp', label: '番茄鸡蛋面' },
+  { value: '/images/dish-08.webp', label: '黑椒牛柳饭' },
+  { value: '/images/dish-09.webp', label: '香辣鸡腿堡' },
+  { value: '/images/dish-10.webp', label: '时蔬沙拉' },
+  { value: '/images/dish-11.webp', label: '糖醋里脊' },
+  { value: '/images/dish-12.webp', label: '皮蛋瘦肉粥' },
+
   { value: '/images/hongshaorou.jpg', label: '红烧小炒实景' },
   { value: '/images/jilifan.jpg', label: '香煎风味实景' },
   { value: '/images/fresh-bowl.jpg', label: '轻食鲜蔬实景' },
@@ -45,7 +58,12 @@ export function isValidDishId(id) {
 }
 
 export function isDishSoldOut(dish) {
-  return dish?.status === 'danger' || dish?.soldOut === true || dish?.available === false
+  return (
+    dish?.status === 'danger' ||
+    dish?.soldOut === true ||
+    dish?.available === false ||
+    dish?.listed === false
+  )
 }
 
 export function resolveDishImage(src, baseUrl = '/') {

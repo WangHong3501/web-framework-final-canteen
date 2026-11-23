@@ -1,5 +1,8 @@
 # 页面开发 B 实际验收记录
 
+> 阶段交付记录。下列提交、脚本和截图反映成员当时的实现。最终版本、运行命令与证据见[终版审查](./final-review.md)。
+
+
 验收日期：2026-11-21。负责人：翟毅（32605150604）。验收基线为合并陈续文与江贤松提交后的 `origin/main`（`7aa7bfd`），范围覆盖 `web/src/api/dishes.js`、`web/src/components/dishes/**` 以及选项式 API 重构后的 `/menu`、`/dish/:id` 与 `/admin/dishes` 页面。
 
 ## 环境与复现

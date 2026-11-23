@@ -1,20 +1,4 @@
-<script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
-  type: {
-    type: String,
-    default: 'info',
-    validator: (val) =>
-      ['success', 'warning', 'danger', 'info', 'brand', 'new', 'hot', 'sold', 'veg', 'halal'].includes(
-        val,
-      ),
-  },
-  text: { type: String, default: '' },
-  size: { type: String, default: 'md' },
-  dot: { type: Boolean, default: false },
-})
-
+<script>
 const FALLBACK = {
   success: '可点餐',
   warning: '余量少',
@@ -23,12 +7,41 @@ const FALLBACK = {
   brand: '招牌',
   new: '新品',
   hot: '热销',
+  spicy: '香辣',
   sold: '售罄',
   veg: '素食',
   halal: '清真',
 }
-
-const label = computed(() => props.text || FALLBACK[props.type] || '')
+export default {
+  props: {
+    type: {
+      type: String,
+      default: 'info',
+      validator: (val) =>
+        [
+          'success',
+          'warning',
+          'danger',
+          'info',
+          'brand',
+          'new',
+          'hot',
+          'sold',
+          'veg',
+          'halal',
+          'spicy',
+        ].includes(val),
+    },
+    text: { type: String, default: '' },
+    size: { type: String, default: 'md' },
+    dot: { type: Boolean, default: false },
+  },
+  computed: {
+    label() {
+      return this.text || FALLBACK[this.type] || ''
+    },
+  },
+}
 </script>
 
 <template>

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import path from 'node:path'
 import fs from 'node:fs'
 
-const shots = path.resolve('../screenshots')
+const shots = path.resolve(process.env.SCREENSHOT_DIR || '.local/screenshots')
 fs.mkdirSync(shots, { recursive: true })
 async function demoLogin(page, role = 'student') {
   await page.goto('/#/login')

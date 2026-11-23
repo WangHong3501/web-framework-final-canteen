@@ -1,22 +1,27 @@
-<script setup>
-import { computed } from 'vue'
+<script>
 import AppIcon from './AppIcon.vue'
-
-const props = defineProps({
-  status: { type: String, default: 'preparing' },
-  compact: { type: Boolean, default: false },
-})
-
 const STEPS = [
   { key: 'pending', label: '待支付', icon: 'Wallet' },
-  { key: 'preparing', label: '待备餐', icon: 'ChefHat' },
+  { key: 'preparing', label: '备餐中', icon: 'ChefHat' },
   { key: 'ready', label: '待取餐', icon: 'ShoppingBag' },
   { key: 'completed', label: '已完成', icon: 'CircleCheck' },
 ]
-
-const currentIndex = computed(() => STEPS.findIndex((step) => step.key === props.status))
-
-const refunded = computed(() => props.status === 'refunded')
+export default {
+  props: {
+    status: { type: String, default: 'preparing' },
+    compact: { type: Boolean, default: false },
+  },
+  components: { AppIcon },
+  data: () => ({ STEPS }),
+  computed: {
+    currentIndex() {
+      return STEPS.findIndex((step) => step.key === this.status)
+    },
+    refunded() {
+      return this.status === 'refunded'
+    },
+  },
+}
 </script>
 
 <template>
