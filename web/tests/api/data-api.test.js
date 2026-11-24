@@ -72,6 +72,30 @@ test('登录后可读菜品与档口，字段和枚举保持种子约定', async
   assert.equal(stalls.body[0].window, 'A 窗口')
 })
 
+test('四个档口每个餐次有八道菜，两道优惠，并有余量少和售罄示例', async () => {
+  for (const stallId of ['stall-1', 'stall-2', 'stall-3', 'stall-4']) {
+    for (const meal of ['breakfast', 'lunch', 'dinner', 'night']) {
+      const key = `${stallId}/${meal}`
+      const { status, body } = await api.request(`/dishes?stallId=${stallId}&meal=${meal}`, {
+        token: student,
+      })
+      assert.equal(status, 200, key)
+      assert.equal(body.length, 8, key)
+      assert.ok(
+        body.every((dish) => dish.stallId === stallId && dish.meal === meal),
+        key,
+      )
+      const offers = body.filter(
+        (dish) => dish.status !== 'danger' && dish.originalPrice > dish.price,
+      )
+      assert.equal(offers.length, 2, key)
+      assert.equal(body.filter((dish) => dish.status === 'warning').length, 1, key)
+      const soldOut = body.filter((dish) => dish.status === 'danger')
+      assert.ok(soldOut.length >= 1 && soldOut.length <= 2, key)
+    }
+  }
+})
+
 test('商家新增菜品只会写入本档口和托管字段', async () => {
   const response = await api.request('/dishes', {
     method: 'POST',
@@ -175,6 +199,48 @@ test('第 2 版单档口运行库补齐档口与账号，原有菜品和订单�
       assert.equal(session.body.user.stallId, stallId)
       assert.ok(upgraded.dishes.some((dish) => dish.stallId === stallId))
     }
+  } finally {
+    await legacy.close()
+  }
+})
+
+test('第 3 版菜单升级追加新菜，只更新仍使用旧预设的餐次、优惠和库存状态', async () => {
+  let orders
+  const legacy = await startApi({
+    mutateSeed(seed) {
+      seed.catalog.revision = 3
+      seed.dishes = seed.dishes.filter(
+        (dish) => Number(dish.id.split('-').at(-1)) <= 60 && dish.id !== 'dish-seed-13',
+      )
+      const dish = (id) => seed.dishes.find((entry) => entry.id === id)
+      dish('dish-seed-14').meal = 'lunch'
+      delete dish('dish-seed-14').originalPrice
+      dish('dish-seed-40').meal = 'night'
+      dish('dish-04').price = 16
+      delete dish('dish-04').originalPrice
+      dish('dish-seed-20').status = 'success'
+      dish('dish-seed-41').status = 'warning'
+      dish('dish-seed-59').listed = false
+      dish('dish-seed-59').status = 'success'
+      orders = structuredClone(seed.orders)
+    },
+  })
+  try {
+    const upgraded = JSON.parse(fs.readFileSync(legacy.dbFile, 'utf8'))
+    const dish = (id) => upgraded.dishes.find((entry) => entry.id === id)
+    assert.deepEqual(upgraded.orders, orders)
+    assert.equal(upgraded.dishes.length, seedDishes.length - 1)
+    assert.equal(dish('dish-seed-13'), undefined)
+    assert.equal(dish('dish-seed-68').meal, 'night')
+    assert.equal(dish('dish-seed-14').meal, 'dinner')
+    assert.equal(dish('dish-seed-14').originalPrice, 7.5)
+    assert.equal(dish('dish-seed-40').meal, 'night')
+    assert.equal(dish('dish-04').price, 16)
+    assert.equal(dish('dish-04').originalPrice, undefined)
+    assert.equal(dish('dish-seed-20').status, 'warning')
+    assert.equal(dish('dish-seed-41').status, 'warning')
+    assert.equal(dish('dish-seed-59').listed, false)
+    assert.equal(dish('dish-seed-59').status, 'success')
   } finally {
     await legacy.close()
   }

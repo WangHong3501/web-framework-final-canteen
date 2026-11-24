@@ -69,6 +69,9 @@ export default {
     imageSrc() {
       return this.dish ? resolveDishImage(this.dish.image, this.assetBase) : ''
     },
+    unavailableText() {
+      return this.dish?.listed === false ? '已下架' : '已售罄'
+    },
     stallInfo() {
       if (!this.dish) return null
       return this.stalls.find((item) => String(item.id) === String(this.dish.stallId)) || null
@@ -177,7 +180,7 @@ export default {
             <img :src="imageSrc" :alt="dish.name" />
             <div v-if="soldOut" class="detail-media__mask">
               <AppIcon name="Ban" :size="28" />
-              <span>今日已售罄</span>
+              <span>{{ unavailableText }}</span>
             </div>
           </div>
 
@@ -192,7 +195,8 @@ export default {
                 :type="tag.type"
                 :text="tag.text"
               />
-              <StatusTag v-if="soldOut" type="sold" text="已售罄" />
+              <StatusTag v-if="soldOut" type="sold" :text="unavailableText" />
+              <StatusTag v-else-if="dish.status === 'warning'" type="warning" text="余量少" />
             </div>
 
             <h1>{{ dish.name }}</h1>
@@ -234,7 +238,11 @@ export default {
 
             <div v-if="!userStore.isMerchant" class="detail-purchase">
               <div class="detail-price-box">
-                <PriceTag :value="dish.price" :original="dish.originalPrice" size="lg" />
+                <PriceTag
+                  :value="dish.price"
+                  :original="soldOut ? null : dish.originalPrice"
+                  size="lg"
+                />
                 <small class="detail-subtotal" data-testid="detail-subtotal">
                   小计 ¥{{ subtotalText }}
                 </small>

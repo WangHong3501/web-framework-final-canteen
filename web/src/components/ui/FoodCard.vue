@@ -2,12 +2,12 @@
 import StatusTag from './StatusTag.vue'
 import PriceTag from './PriceTag.vue'
 import AppIcon from './AppIcon.vue'
-import { DEFAULT_CUISINE, dishSavingsLabel, isDishSoldOut } from '@/components/dishes/dish-meta'
-const STATUS_TEXT = {
-  success: '可点餐',
-  warning: '余量少',
-  danger: '已售罄',
-}
+import {
+  DEFAULT_CUISINE,
+  dishSavingsLabel,
+  isDishSoldOut,
+  statusLabel,
+} from '@/components/dishes/dish-meta'
 const SPICE_TEXT = {
   1: '微辣',
   2: '中辣',
@@ -31,7 +31,7 @@ export default {
       return isDishSoldOut(this.food)
     },
     statusText() {
-      return STATUS_TEXT[this.food.status] || ''
+      return statusLabel(this.food.status)
     },
     badges() {
       return this.food.badges || []
@@ -107,7 +107,7 @@ export default {
         <PriceTag
           :value="food.price"
           size="md"
-          :original="food.originalPrice"
+          :original="soldOut ? null : food.originalPrice"
           :show-discount="false"
         />
         <slot name="action">

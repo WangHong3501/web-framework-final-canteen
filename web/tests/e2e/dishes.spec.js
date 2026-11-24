@@ -62,6 +62,13 @@ test('校园菜单优惠优先、价格对齐，筛选后仍可加餐车或查�
       prices.slice(0, 3).map((price) => Math.round(price.getBoundingClientRect().bottom)),
     )
   expect(new Set(priceBaselines).size).toBe(1)
+  await page.getByRole('tab', { name: '夜宵', exact: true }).click()
+  await expect(page.locator('.food-card')).toHaveCount(8)
+  await expect(page.locator('.food-card .dish-offer')).toHaveCount(2)
+  await expect(page.locator('.food-card .food-status')).toHaveCount(1)
+  await expect(page.locator('.food-card.is-sold')).toHaveCount(2)
+  await expect(page.locator('.food-card').last()).toHaveClass(/is-sold/)
+  await page.getByRole('tab', { name: '全部餐次', exact: true }).click()
   await page.getByRole('tab', { name: '全部档口', exact: true }).click()
 
   await readyForScreenshot(page)
@@ -153,6 +160,12 @@ test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增�
     .click()
   await expect(page.getByRole('heading', { name: '欢迎来到档口工作台' })).toBeVisible()
   await expect(page.getByTestId('metric-total')).toHaveText(String(merchantDishCount))
+  const mealFilter = page.getByLabel('按餐次筛选')
+  const rows = page.getByTestId('admin-dishes-table').locator('tbody tr')
+  await mealFilter.selectOption('night')
+  await expect(rows).toHaveCount(8)
+  await expect(rows.filter({ hasText: '砂锅鲜虾粥' })).toBeVisible()
+  await mealFilter.selectOption('all')
 
   await readyForScreenshot(page)
   await assertAccessible(page, 'admin-dishes')
@@ -168,17 +181,20 @@ test('档口商家工作台支持只看本档口、上下架 PUT 与 Dialog 增�
   await expect(page).toHaveURL(/\/admin\/dishes$/)
 
   const soldDish = page.locator('tr', { hasText: '糖醋里脊' })
+  const soldCount = seedDishes.filter(
+    (dish) => dish.stallId === 'stall-1' && dish.status === 'danger',
+  ).length
   await soldDish.getByRole('button', { name: '下架' }).click()
   await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
   await expect(page.getByText('「糖醋里脊」已下架')).toBeVisible()
   await page.reload()
   await expect(soldDish).toContainText('已下架')
-  await expect(page.getByTestId('metric-danger')).toHaveText('0')
+  await expect(page.getByTestId('metric-danger')).toHaveText(String(soldCount - 1))
   await soldDish.getByRole('button', { name: '上架' }).click()
   await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
   await expect(page.getByText('「糖醋里脊」已上架')).toBeVisible()
   await expect(soldDish).toContainText('已售罄')
-  await expect(page.getByTestId('metric-danger')).toHaveText('1')
+  await expect(page.getByTestId('metric-danger')).toHaveText(String(soldCount))
   await expect(page.locator('.el-message')).toHaveCount(0)
 
   await page.getByTestId('add-dish-btn').click()
@@ -226,6 +242,9 @@ test('移动端 375px 下菜单页与详情页无横向溢出', async ({ page })
   await page.setViewportSize({ width: 375, height: 812 })
   await demoLogin(page, 'student')
   await expect(page.locator('.m-dish')).toHaveCount(seedDishes.length)
+  await expect(page.locator('.m-dish').getByText('余量少', { exact: true })).toHaveCount(
+    seedDishes.filter((dish) => dish.status === 'warning').length,
+  )
   await readyForScreenshot(page)
   await page.screenshot({ path: path.join(shots, 'G5-19-菜单详情-手机.png') })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

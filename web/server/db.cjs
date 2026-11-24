@@ -167,6 +167,48 @@ function assertRuntimeShape(db, source) {
     if (!Array.isArray(db[key])) throw new Error(`运行数据库缺少数组字段 ${key}（${source}）`)
 }
 
+// 第 4 版只调整仍沿用旧预设的字段，商家改过的值优先。
+const CATALOG_V3_DISH_DEFAULTS = {
+  'dish-04': { originalPrice: undefined },
+  'dish-07': { originalPrice: undefined },
+  'dish-12': { category: '面食米线' },
+  'dish-seed-14': { meal: 'lunch', originalPrice: undefined },
+  'dish-seed-15': { meal: 'lunch' },
+  'dish-seed-16': { meal: 'lunch' },
+  'dish-seed-17': { originalPrice: undefined },
+  'dish-seed-18': { originalPrice: undefined },
+  'dish-seed-20': { status: 'success' },
+  'dish-seed-21': { originalPrice: undefined },
+  'dish-seed-23': { originalPrice: undefined },
+  'dish-seed-24': { status: 'success' },
+  'dish-seed-26': { originalPrice: undefined },
+  'dish-seed-29': { originalPrice: undefined },
+  'dish-seed-31': { originalPrice: undefined },
+  'dish-seed-33': { status: 'success' },
+  'dish-seed-34': { originalPrice: undefined },
+  'dish-seed-36': { originalPrice: undefined },
+  'dish-seed-39': { status: 'success' },
+  'dish-seed-40': { meal: 'breakfast' },
+  'dish-seed-41': { status: 'success' },
+  'dish-seed-46': { status: 'success' },
+  'dish-seed-47': { meal: 'lunch' },
+  'dish-seed-51': { status: 'success' },
+  'dish-seed-52': { meal: 'lunch' },
+  'dish-seed-59': { status: 'success' },
+  'dish-seed-60': { status: 'success' },
+}
+
+function applyVersion4DishDefaults(current, preset) {
+  const defaults = CATALOG_V3_DISH_DEFAULTS[preset.id]
+  if (!defaults || current.stallId !== preset.stallId || current.listed === false) return
+  for (const [field, previousValue] of Object.entries(defaults)) {
+    if (current[field] !== previousValue) continue
+    if (field === 'originalPrice' && current.price !== preset.price) continue
+    if (field === 'status' && (current.soldOut === true || current.available === false)) continue
+    current[field] = preset[field]
+  }
+}
+
 function upgradeDemoData(runtime, data, seed) {
   const previous = data.catalog?.revision ?? 0
   const revision = seed.catalog?.revision ?? 0
@@ -203,13 +245,18 @@ function upgradeDemoData(runtime, data, seed) {
       ) {
         current.originalPrice = dish.originalPrice
       }
+      if (previous < 4) applyVersion4DishDefaults(current, dish)
       continue
     }
-    // 补入的档口恢复完整菜单，已有档口只在首次升级时追加新编号的菜品。
+    // 按批次追加新编号的菜品，避免补回已有档口主动删除的旧菜。
     const stall = stalls.get(dish.stallId)
+    const numberedSeed = dish.id.startsWith('dish-seed-')
+    const newMenuDish = numberedSeed && Number(dish.id.slice('dish-seed-'.length)) > 60
     if (
       stall &&
-      (addedStalls.has(dish.stallId) || (previous < 1 && dish.id.startsWith('dish-seed-')))
+      (addedStalls.has(dish.stallId) ||
+        (previous < 1 && numberedSeed) ||
+        (previous < 4 && newMenuDish))
     )
       data.dishes.push({ ...dish, stall })
   }

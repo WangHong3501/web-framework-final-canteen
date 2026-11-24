@@ -15,6 +15,7 @@ import PriceTag from '@/components/ui/PriceTag.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import {
   DISH_CATEGORIES,
+  DISH_MEALS,
   DISH_STATUS_OPTIONS,
   filterDishList,
   mealLabel,
@@ -45,6 +46,7 @@ export default {
       errorMsg: '',
       keyword: '',
       categoryFilter: '全部',
+      mealFilter: 'all',
       statusFilter: 'all',
       actingId: '',
       dialogOpen: false,
@@ -53,6 +55,7 @@ export default {
       saving: false,
       dialogError: '',
       categories: ['全部', ...DISH_CATEGORIES],
+      meals: DISH_MEALS,
       statusOptions: [...DISH_STATUS_OPTIONS, { value: 'unlisted', label: '已下架' }],
     }
   },
@@ -83,6 +86,7 @@ export default {
             )
       return filterDishList(source, {
         category: this.categoryFilter,
+        meal: this.mealFilter,
         keyword: this.keyword,
         status: this.statusFilter === 'unlisted' ? 'all' : this.statusFilter,
       })
@@ -102,6 +106,7 @@ export default {
     hasFilter() {
       return (
         this.categoryFilter !== '全部' ||
+        this.mealFilter !== 'all' ||
         this.statusFilter !== 'all' ||
         Boolean(this.keyword.trim())
       )
@@ -220,6 +225,7 @@ export default {
     resetFilters() {
       this.keyword = ''
       this.categoryFilter = '全部'
+      this.mealFilter = 'all'
       this.statusFilter = 'all'
     },
   },
@@ -277,6 +283,10 @@ export default {
         >
           <template #prefix><AppIcon name="Search" :size="16" /></template>
         </el-input>
+
+        <select v-model="mealFilter" class="menu-select" aria-label="按餐次筛选">
+          <option v-for="meal in meals" :key="meal.key" :value="meal.key">{{ meal.label }}</option>
+        </select>
 
         <div class="admin-chips" role="group" aria-label="按分类筛选">
           <button

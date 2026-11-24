@@ -13,6 +13,7 @@ import {
   dishSavingsLabel,
   isDishSoldOut,
   resolveDishImage,
+  statusLabel,
 } from '@/components/dishes/dish-meta'
 import PhoneFrame from '@/components/ui/PhoneFrame.vue'
 import StatusTag from '@/components/ui/StatusTag.vue'
@@ -79,6 +80,7 @@ export default {
   methods: {
     soldOut: isDishSoldOut,
     savingsLabel: dishSavingsLabel,
+    statusText: statusLabel,
     image(src) {
       return resolveDishImage(src, import.meta.env.BASE_URL)
     },
@@ -217,6 +219,12 @@ export default {
                 savingsLabel(dish)
               }}</span>
               <StatusTag
+                v-if="!soldOut(dish) && dish.status === 'warning'"
+                type="warning"
+                size="sm"
+                :text="statusText(dish.status)"
+              />
+              <StatusTag
                 v-if="dish.cuisine && dish.cuisine !== defaultCuisine"
                 type="info"
                 size="sm"
@@ -239,7 +247,7 @@ export default {
             <div class="m-dish__bottom">
               <PriceTag
                 :value="dish.price"
-                :original="dish.originalPrice"
+                :original="soldOut(dish) ? null : dish.originalPrice"
                 size="md"
                 variant="stacked"
                 :show-discount="false"
