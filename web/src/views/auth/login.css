@@ -90,6 +90,17 @@
 .login-page .login-form .el-form-item {
   margin-bottom: 23px;
 }
+.login-page .login-form .el-input__inner:focus-visible {
+  outline: none;
+}
+.login-page .login-form .el-form-item .el-input__wrapper:focus-within {
+  outline: 2px solid var(--login-field-focus, var(--forest));
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.login-page .login-form .el-form-item.is-error {
+  --login-field-focus: var(--danger-600);
+}
 .login-page .login-options {
   display: flex;
   justify-content: space-between;
