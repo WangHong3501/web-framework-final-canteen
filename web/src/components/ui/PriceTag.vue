@@ -1,10 +1,13 @@
 <script>
+import { dishSavingsLabel, priceSavingsCents } from '@/components/dishes/dish-meta'
+
 export default {
   props: {
     value: { type: [Number, String], required: true },
     original: { type: [Number, String], default: null },
     variant: { type: String, default: 'default' },
     size: { type: String, default: 'md' },
+    showDiscount: { type: Boolean, default: true },
   },
   computed: {
     amount() {
@@ -17,16 +20,12 @@ export default {
       return { int, dec }
     },
     originalText() {
-      if (this.original === null || this.original === undefined || this.original === '') return ''
-      const num = Number(this.original)
-      return Number.isFinite(num) ? num.toFixed(2) : ''
+      return priceSavingsCents(this.value, this.original) ? Number(this.original).toFixed(2) : ''
     },
     discountBadge() {
-      if (!this.originalText) return ''
-      const base = Number(this.originalText)
-      if (!base) return ''
-      const rate = Math.round((this.amount / base) * 10)
-      return rate < 10 ? `${rate}折` : ''
+      return this.showDiscount
+        ? dishSavingsLabel({ price: this.value, originalPrice: this.original })
+        : ''
     },
   },
 }
@@ -34,9 +33,11 @@ export default {
 
 <template>
   <span class="price-tag" :class="[`price--${variant}`, `price--${size}`]">
-    <span class="price-tag__sym" aria-hidden="true">¥</span>
-    <span class="price-tag__int">{{ parts.int }}</span>
-    <span class="price-tag__dec">.{{ parts.dec }}</span>
+    <span class="price-tag__amount">
+      <span class="price-tag__sym" aria-hidden="true">¥</span>
+      <span class="price-tag__int">{{ parts.int }}</span>
+      <span class="price-tag__dec">.{{ parts.dec }}</span>
+    </span>
     <s v-if="originalText" class="price-tag__original">¥{{ originalText }}</s>
     <span v-if="discountBadge" class="price-tag__badge">{{ discountBadge }}</span>
   </span>
@@ -56,6 +57,13 @@ export default {
   font-size: var(--fs-12);
   font-weight: var(--fw-semibold);
   margin-right: 1px;
+}
+
+.price-tag__amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  white-space: nowrap;
 }
 
 .price-tag__int {
@@ -117,5 +125,15 @@ export default {
 .price--muted .price-tag__sym,
 .price--muted .price-tag__dec {
   font-size: var(--fs-12);
+}
+.price--stacked {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.price--stacked .price-tag__original {
+  margin-left: 0;
+  font-size: var(--fs-11);
+  white-space: nowrap;
 }
 </style>

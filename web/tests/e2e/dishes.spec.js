@@ -33,11 +33,31 @@ async function assertAccessible(page, label) {
   ).toEqual([])
 }
 
-test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车联动', async ({ page }) => {
+test('校园菜单优惠优先、价格对齐，筛选后仍可加餐车或查看详情', async ({ page }) => {
   await demoLogin(page, 'student')
   await expect(page.getByTestId('menu-dish-grid')).toBeVisible()
   await expect(page.locator('.food-card')).toHaveCount(seedDishes.length)
+  const offers = seedDishes.filter(
+    (dish) => dish.originalPrice > dish.price && dish.status !== 'danger',
+  )
+  await expect(page.locator('.food-card').first()).toContainText(offers[0].name)
+  const onlyOffers = page.getByRole('button', { name: '仅看优惠', exact: true })
+  await onlyOffers.click()
+  await expect(page.locator('.food-card')).toHaveCount(offers.length)
+  await expect(onlyOffers).toHaveAttribute('aria-pressed', 'true')
+  await onlyOffers.click()
+  await expect(page.locator('.food-card')).toHaveCount(seedDishes.length)
   await expect(page.getByRole('button', { name: '将糖醋里脊加入餐车' })).toBeDisabled()
+
+  await page.getByRole('tab', { name: /青禾小厨/ }).click()
+  await expect(page.locator('.food-card')).toHaveCount(merchantDishCount)
+  const priceBaselines = await page
+    .locator('.food-card .price-tag__amount')
+    .evaluateAll((prices) =>
+      prices.slice(0, 3).map((price) => Math.round(price.getBoundingClientRect().bottom)),
+    )
+  expect(new Set(priceBaselines).size).toBe(1)
+  await page.getByRole('tab', { name: '全部档口', exact: true }).click()
 
   await readyForScreenshot(page)
   await assertAccessible(page, 'menu')
@@ -48,7 +68,7 @@ test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车�
   await expect(page.locator('.food-card')).toHaveCount(
     seedDishes.filter((dish) => dish.cuisine === '闽菜').length,
   )
-  await page.getByRole('button', { name: '查看福州荔枝肉详情' }).click()
+  await page.getByRole('link', { name: '查看福州荔枝肉详情' }).click()
   await expect(page.getByRole('heading', { name: '福州荔枝肉' })).toBeVisible()
   await page.getByRole('link', { name: '返回菜单', exact: true }).click()
   await expect(cuisine).toHaveValue('闽菜')
@@ -70,7 +90,7 @@ test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车�
   await page.getByLabel('搜索菜名、档口或描述').fill('红烧肉')
   await expect(page.locator('.food-card')).toHaveCount(1)
   await expect(page.getByTestId('menu-dish-dish-01')).toBeVisible()
-  await page.getByRole('button', { name: '查看招牌红烧肉饭详情' }).click()
+  await page.getByRole('link', { name: '查看招牌红烧肉饭详情' }).click()
   await expect(page).toHaveURL(/\/dish\/dish-01\?/)
   await expect(page.getByRole('link', { name: '点餐', exact: true })).toHaveAttribute(
     'aria-current',
@@ -94,7 +114,7 @@ test('校园菜单支持档口 Tab、餐次、分类、搜索与真实点餐车�
 
 test('菜品详情动态路由可正常加载、加车与切换推荐，非法参数给出友好反馈', async ({ page }) => {
   await demoLogin(page, 'student')
-  await page.getByRole('button', { name: '查看招牌红烧肉饭详情' }).click()
+  await page.getByRole('link', { name: '查看招牌红烧肉饭详情' }).click()
   await expect(page).toHaveURL(/\/dish\/dish-01$/)
   await expect(page.getByRole('heading', { name: '招牌红烧肉饭' })).toBeVisible()
   await expect(page.getByTestId('detail-subtotal')).toContainText('¥18.00')
@@ -214,7 +234,7 @@ test('移动端 375px 下菜单页与详情页无横向溢出', async ({ page })
     (dish) => dish.stallId === 'stall-1' && dish.cuisine === '粤菜',
   )
   await expect(page.locator('.m-dish')).toHaveCount(cantoneseDishes.length)
-  await page.getByRole('button', { name: '查看香菇滑鸡饭详情' }).click()
+  await page.getByRole('link', { name: '查看香菇滑鸡饭详情' }).click()
   await expect(page.getByRole('heading', { name: '香菇滑鸡饭' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('link', { name: '返回菜单', exact: true }).click()

@@ -1,5 +1,4 @@
 <script>
-import { ElMessage } from 'element-plus'
 import { mapStores } from 'pinia'
 import { defineAsyncComponent } from 'vue'
 import { dishesApi } from '@/api/dishes'
@@ -8,6 +7,7 @@ import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import OrderShell from '@/components/order/OrderShell.vue'
 import DishStallTabs from '@/components/dishes/DishStallTabs.vue'
+import MenuResults from '@/components/dishes/MenuResults.vue'
 import MealSwitch from '@/components/ui/MealSwitch.vue'
 import FoodCard from '@/components/ui/FoodCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -18,7 +18,9 @@ import {
   DISH_CUISINES,
   DISH_MEALS,
   filterDishList,
+  hasAvailableOffer,
   isDishSoldOut,
+  orderMenuDishes,
   resolveDishImage,
 } from '@/components/dishes/dish-meta'
 
@@ -31,16 +33,18 @@ function readMenuFilters(query) {
     stallId: typeof query.stall === 'string' && query.stall ? query.stall : 'all',
     category: DISH_CATEGORIES.includes(query.category) ? query.category : '全部',
     cuisine: DISH_CUISINES.includes(query.cuisine) ? query.cuisine : '全部',
+    onlyOffers: query.offers === '1',
     keyword: typeof query.q === 'string' ? query.q : '',
   }
 }
 
-function menuFilterQuery({ meal, stallId, category, cuisine, keyword }) {
+function menuFilterQuery({ meal, stallId, category, cuisine, onlyOffers, keyword }) {
   const query = {}
   if (meal !== 'all') query.meal = meal
   if (stallId !== 'all') query.stall = stallId
   if (category !== '全部') query.category = category
   if (cuisine !== '全部') query.cuisine = cuisine
+  if (onlyOffers) query.offers = '1'
   if (keyword.trim()) query.q = keyword.trim()
   return query
 }
@@ -50,6 +54,7 @@ export default {
     OrderShell,
     MobileOrderView,
     DishStallTabs,
+    MenuResults,
     MealSwitch,
     FoodCard,
     EmptyState,
@@ -76,7 +81,7 @@ export default {
       const present = new Set(scoped.map((item) => item.category).filter(Boolean))
       return ['全部', ...DISH_CATEGORIES.filter((cat) => present.has(cat))]
     },
-    filteredDishes() {
+    matchingDishes() {
       return filterDishList(this.dishes, {
         meal: this.meal,
         stallId: this.stallId,
@@ -84,6 +89,16 @@ export default {
         cuisine: this.cuisine,
         keyword: this.keyword,
       })
+    },
+    offeredDishes() {
+      return this.matchingDishes.filter(hasAvailableOffer)
+    },
+    filteredDishes() {
+      return orderMenuDishes(this.onlyOffers ? this.offeredDishes : this.matchingDishes)
+    },
+    pickupLabel() {
+      const canteens = new Set(this.stalls.map((stall) => stall.canteen).filter(Boolean))
+      return canteens.size === 1 ? `${[...canteens][0]} · 档口自取` : '档口自取'
     },
     showMobileMenu() {
       return (
@@ -165,7 +180,6 @@ export default {
     addDish(dish) {
       if (this.userStore.isMerchant || this.soldOut(dish) || this.qtyOf(dish.id) >= 20) return
       this.cartStore.add(dish, 1)
-      ElMessage({ message: `已加入「${dish.name}」`, type: 'success', duration: 1400 })
     },
     minusDish(dish) {
       this.cartStore.decrease(dish.id)
@@ -174,21 +188,22 @@ export default {
       if (this.qtyOf(dish.id)) this.cartStore.setQty(dish.id, qty)
       else if (qty > 0) this.cartStore.add(dish, qty)
     },
-    openDish(dish) {
-      this.$router.push({
+    dishDestination(dish) {
+      return {
         name: 'dish-detail',
         params: { id: dish.id },
         query:
           this.$route.name === 'mobile-order'
             ? { ...this.filterQuery, from: 'mobile' }
             : this.filterQuery,
-      })
+      }
     },
     resetFilters() {
       this.meal = 'all'
       this.stallId = 'all'
       this.category = '全部'
       this.cuisine = '全部'
+      this.onlyOffers = false
       this.keyword = ''
     },
   },
@@ -203,23 +218,29 @@ export default {
     v-model:category="category"
     v-model:cuisine="cuisine"
     v-model:keyword="keyword"
+    v-model:only-offers="onlyOffers"
     :preview="!compactLayout"
     :dishes="filteredDishes"
     :stalls="stalls"
     :categories="categories"
     :cuisines="cuisines"
+    :offer-count="offeredDishes.length"
+    :pickup-label="pickupLabel"
+    :detail-destination="dishDestination"
     :has-filters="hasActiveFilter"
     :loading="loading"
     :load-error="loadError"
     @update-quantity="setDishQty"
-    @open-dish="openDish"
     @retry="loadMenu"
     @reset="resetFilters"
   />
   <OrderShell v-else>
-    <div class="menu-page">
+    <div class="menu-page" :class="{ 'menu-page--with-cart': cartCount }">
       <div class="menu-heading">
-        <h1>{{ userStore.isMerchant ? '学生菜单预览' : '今日菜单' }}</h1>
+        <div>
+          <h1>{{ userStore.isMerchant ? '学生菜单预览' : '今日菜单' }}</h1>
+          <p class="menu-pickup-label"><AppIcon name="MapPin" :size="15" />{{ pickupLabel }}</p>
+        </div>
         <el-input
           v-model="keyword"
           placeholder="搜索菜名、档口或描述…"
@@ -257,6 +278,13 @@ export default {
         </div>
       </section>
 
+      <MenuResults
+        v-if="!loading && !loadError"
+        v-model="onlyOffers"
+        :count="filteredDishes.length"
+        :offers="offeredDishes.length"
+      />
+
       <div v-if="loadError" class="menu-error" role="alert">
         <AppIcon name="CircleAlert" :size="20" />
         <span>{{ loadError }}</span>
@@ -283,21 +311,12 @@ export default {
           v-for="dish in filteredDishes"
           :key="dish.id"
           :food="presentDish(dish)"
+          :detail-to="dishDestination(dish)"
           :data-testid="`menu-dish-${dish.id}`"
-          class="order-enter"
-          @click="openDish(dish)"
         >
           <template #action>
-            <div class="dish-action" @click.stop>
-              <button
-                type="button"
-                class="dish-detail-link"
-                :aria-label="`查看${dish.name}详情`"
-                @click="openDish(dish)"
-              >
-                详情
-              </button>
-              <div v-if="!userStore.isMerchant && qtyOf(dish.id) > 0" class="qty-stepper">
+            <div v-if="!userStore.isMerchant" class="dish-action">
+              <div v-if="qtyOf(dish.id) > 0" class="qty-stepper">
                 <button
                   class="is-minus"
                   type="button"
@@ -317,7 +336,7 @@ export default {
                 </button>
               </div>
               <button
-                v-else-if="!userStore.isMerchant"
+                v-else
                 class="add-btn"
                 type="button"
                 :disabled="soldOut(dish)"
@@ -351,7 +370,7 @@ export default {
             <span class="cart-bar__badge">{{ cartCount }}</span>
           </span>
           <div class="cart-bar__summary">
-            <small>已选 {{ cartCount }} 件 · 合计</small>
+            <small>已选 {{ cartCount }} 件 · {{ cartStore.byStall.length }} 个档口</small>
             <PriceTag :value="cartStore.total" size="sm" />
           </div>
           <span class="cart-bar__spacer"></span>
@@ -369,6 +388,9 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding-bottom: var(--space-8);
+}
+.menu-page--with-cart {
+  padding-bottom: calc(var(--space-9) + var(--size-control));
 }
 .menu-heading,
 .menu-filters__row,
@@ -388,7 +410,7 @@ export default {
 }
 .menu-filters {
   padding: 0 var(--space-4) var(--space-3);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -428,20 +450,6 @@ export default {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-.dish-detail-link {
-  border: 1px solid var(--line);
-  background: var(--gray-50);
-  color: var(--forest);
-  border-radius: var(--radius-pill);
-  padding: 4px 10px;
-  font-size: var(--fs-12);
-  font-weight: var(--fw-medium);
-  white-space: nowrap;
-}
-.dish-detail-link:hover {
-  background: var(--brand-50);
-  border-color: var(--brand-300);
 }
 .cart-bar-enter-active,
 .cart-bar-leave-active {

@@ -20,6 +20,7 @@ const merchantLinks = [
 
 export default {
   components: { AppIcon, BrandMark },
+  data: () => ({ switchingStall: false }),
   computed: {
     user: () => useUserStore(),
     cart: () => useCartStore(),
@@ -30,6 +31,20 @@ export default {
       if (this.$route.name === 'dish-detail' && this.$route.query.from === 'orders') return 'orders'
       const section = this.$route.meta.section
       return this.user.isMerchant && section === 'menu' ? 'dishes' : section
+    },
+  },
+  methods: {
+    async switchStall() {
+      if (this.switchingStall) return
+      this.switchingStall = true
+      try {
+        await this.user.logout()
+      } catch {
+        // 用户仓库会清除本机登录状态。
+      } finally {
+        await this.$router.replace({ name: 'login', query: { role: 'merchant' } })
+        this.switchingStall = false
+      }
     },
   },
 }
@@ -72,7 +87,18 @@ export default {
           </a>
         </router-link>
       </nav>
-      <span class="workspace-header__account">{{ user.displayName }}</span>
+      <div class="workspace-header__identity">
+        <span class="workspace-header__account">{{ user.displayName }}</span>
+        <button
+          v-if="user.isMerchant"
+          class="workspace-header__switch"
+          type="button"
+          :disabled="switchingStall"
+          @click="switchStall"
+        >
+          切换档口
+        </button>
+      </div>
     </div>
   </header>
 </template>
@@ -97,14 +123,37 @@ export default {
   gap: var(--space-4);
 }
 
-.workspace-header__account {
+.workspace-header__identity {
   justify-self: end;
   max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workspace-header__account {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
   font-size: var(--fs-13);
+}
+
+.workspace-header__switch {
+  flex-shrink: 0;
+  min-height: var(--size-control-sm);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--brand-200);
+  border-radius: var(--radius-sm);
+  background: var(--brand-50);
+  color: var(--forest);
+  font-size: var(--fs-12);
+}
+
+.workspace-header__switch:hover {
+  background: var(--brand-100);
 }
 
 .workspace-nav {

@@ -167,21 +167,41 @@ function assertRuntimeShape(db, source) {
     if (!Array.isArray(db[key])) throw new Error(`运行数据库缺少数组字段 ${key}（${source}）`)
 }
 
-function upgradeCatalog(runtime, data, seed) {
+function upgradeDemoData(runtime, data, seed) {
+  const previous = data.catalog?.revision ?? 0
   const revision = seed.catalog?.revision ?? 0
-  if ((data.catalog?.revision ?? 0) >= revision) return
+  if (previous >= revision) return
 
   const existing = new Map(data.dishes.map((dish) => [dish?.id, dish]))
   const stalls = new Map(data.stalls.map((stall) => [stall?.id, stall?.name]))
   for (const dish of seed.dishes) {
     const current = existing.get(dish.id)
     if (current) {
-      if (!current.cuisine && current.name === dish.name) current.cuisine = dish.cuisine
+      if (current.name !== dish.name) continue
+      if (previous < 1 && !current.cuisine) current.cuisine = dish.cuisine
+      if (
+        previous < 2 &&
+        current.originalPrice === undefined &&
+        current.price === dish.price &&
+        dish.originalPrice > dish.price
+      ) {
+        current.originalPrice = dish.originalPrice
+      }
       continue
     }
     // 新种子菜品使用独立的编号前缀，避开老运行库里由商家新增的 dish-NN。
     const stall = stalls.get(dish.stallId)
-    if (dish.id.startsWith('dish-seed-') && stall) data.dishes.push({ ...dish, stall })
+    if (previous < 1 && dish.id.startsWith('dish-seed-') && stall)
+      data.dishes.push({ ...dish, stall })
+  }
+  if (previous < 2) {
+    for (const user of seed.users.filter((entry) => entry.role === 'merchant')) {
+      if (
+        stalls.has(user.stallId) &&
+        !data.users.some((current) => current?.id === user.id || current?.account === user.account)
+      )
+        data.users.push(user)
+    }
   }
   data.catalog = { ...data.catalog, revision }
 
@@ -196,7 +216,7 @@ function upgradeCatalog(runtime, data, seed) {
 
 /**
  * 准备 json-server 使用的运行库：种子只读校验，运行库首次从种子复制。
- * 菜单升级只追加本次种子菜品，并保留已有运行数据。
+ * 演示数据按版本补齐预设菜品、优惠和档口账号。
  */
 function prepareDatabase(filePath) {
   const seedPath = path.resolve(__dirname, '../db.json')
@@ -216,7 +236,7 @@ function prepareDatabase(filePath) {
     throw new Error(`运行数据库无法解析（${runtime}）：${error.message}`)
   }
   assertRuntimeShape(runtimeData, runtime)
-  upgradeCatalog(runtime, runtimeData, seed)
+  upgradeDemoData(runtime, runtimeData, seed)
   return runtime
 }
 

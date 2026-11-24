@@ -7,13 +7,22 @@ import { safeDestination } from '@/router/policy'
 import { mountScene } from '@/utils/motion'
 import BrandMark from '@/components/ui/BrandMark.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import demoMerchants from '@/shared/demo-merchants.json'
 
 export default {
   components: { BrandMark, AppIcon },
   data() {
+    const choosingMerchant = this.$route.query.role === 'merchant'
     return {
       assetBase: import.meta.env.BASE_URL,
-      form: { account: '', password: '', role: 'student', remember: false },
+      form: {
+        account: '',
+        password: '',
+        role: choosingMerchant ? 'merchant' : 'student',
+        remember: false,
+      },
+      demoMerchants,
+      demoMerchant: choosingMerchant ? '' : demoMerchants[0].account,
       busy: false,
       error: '',
       helpOpen: false,
@@ -75,9 +84,9 @@ export default {
       }
     },
     async demo(role) {
-      if (this.busy) return
+      if (this.busy || (role === 'merchant' && !this.demoMerchant)) return
       this.form.role = role
-      this.form.account = role === 'student' ? '32605150621' : 'merchant01'
+      this.form.account = role === 'student' ? '32605150621' : this.demoMerchant
       this.form.password = 'Shiguang@2026'
       await this.$nextTick()
       return this.submit()
@@ -166,7 +175,7 @@ export default {
           /></el-button>
         </el-form>
         <div class="demo-entry" data-enter>
-          <span>初次见面？先体验一餐好食光</span>
+          <span>课程演示</span>
           <div>
             <button
               type="button"
@@ -174,15 +183,33 @@ export default {
               data-testid="demo-student"
               @click="demo('student')"
             >
-              学生账号体验<AppIcon name="ArrowUpRight" :size="16" /></button
-            ><button
-              type="button"
-              :disabled="busy"
-              data-testid="demo-merchant"
-              @click="demo('merchant')"
-            >
-              商家账号体验<AppIcon name="ArrowUpRight" :size="16" />
+              学生体验<AppIcon name="ArrowUpRight" :size="16" />
             </button>
+            <div class="demo-entry__merchant">
+              <select
+                v-model="demoMerchant"
+                class="menu-select"
+                aria-label="演示档口"
+                :disabled="busy"
+              >
+                <option disabled value="">选择档口</option>
+                <option
+                  v-for="merchant in demoMerchants"
+                  :key="merchant.account"
+                  :value="merchant.account"
+                >
+                  {{ merchant.name }} · {{ merchant.window }}
+                </option>
+              </select>
+              <button
+                type="button"
+                :disabled="busy || !demoMerchant"
+                data-testid="demo-merchant"
+                @click="demo('merchant')"
+              >
+                商家体验<AppIcon name="ArrowUpRight" :size="16" />
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -219,8 +246,11 @@ export default {
           忘记校园账户密码时，请联系学校账户管理员。若只是想体验食光校园，可使用登录页下方的演示入口。
         </p>
         <div class="demo-credential">
-          <strong>课程演示账号</strong><span>学生：32605150621</span><span>商家：merchant01</span
-          ><span>演示密码：Shiguang@2026</span>
+          <strong>课程演示账号</strong><span>学生 32605150621</span>
+          <span v-for="merchant in demoMerchants" :key="merchant.account"
+            >{{ merchant.name }} {{ merchant.account }}</span
+          >
+          <span>演示密码 Shiguang@2026</span>
         </div>
       </div>
       <template #footer

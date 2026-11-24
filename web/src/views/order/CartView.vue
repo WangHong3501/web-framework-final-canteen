@@ -7,9 +7,10 @@ import 'vant/es/button/style'
 import 'vant/es/dialog/style'
 import 'vant/es/submit-bar/style'
 import { ordersApi } from '@/api/orders'
+import { dishesApi } from '@/api/dishes'
 import { requestMessage } from '@/api/http'
 import { useCartStore } from '@/stores/cart'
-import { mealLabel, resolveDishImage } from '@/components/dishes/dish-meta'
+import { DISH_MEALS, resolveDishImage } from '@/components/dishes/dish-meta'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -17,7 +18,14 @@ import StallPicker from '@/components/order/StallPicker.vue'
 export default {
   components: { OrderShell, PhoneFrame, SubmitBar, AppIcon, PriceTag, EmptyState, StallPicker },
   inject: ['compactLayout'],
-  data: () => ({ selectedKey: '', remark: '', submitting: false, errorMsg: '' }),
+  data: () => ({
+    selectedKey: '',
+    remarks: new Map(),
+    submitting: false,
+    errorMsg: '',
+    stalls: [],
+    meals: DISH_MEALS.filter((meal) => meal.key !== 'all'),
+  }),
   computed: {
     cart: () => useCartStore(),
     phonePreview() {
@@ -29,11 +37,34 @@ export default {
     group() {
       return this.cart.byStall.find((item) => item.key === this.selectedKey) || this.cart.byStall[0]
     },
-    mealLabel() {
-      return mealLabel(this.cart.meal)
+    pickupSite() {
+      const stall = this.stalls.find(
+        (item) => item.id === this.group?.key || item.name === this.group?.stall,
+      )
+      return [stall?.canteen, stall?.window].filter(Boolean).join(' · ')
+    },
+    remark: {
+      get() {
+        return this.remarks.get(this.group?.key) || ''
+      },
+      set(value) {
+        if (this.group) this.remarks.set(this.group.key, value)
+      },
     },
   },
+  async mounted() {
+    try {
+      const stalls = await dishesApi.stalls()
+      this.stalls = Array.isArray(stalls) ? stalls : []
+    } catch {
+      // 订单提交后仍会返回取餐窗口。
+    }
+  },
   methods: {
+    selectStall(key) {
+      this.selectedKey = key
+      this.errorMsg = ''
+    },
     image(src) {
       return resolveDishImage(src, import.meta.env.BASE_URL)
     },
@@ -52,6 +83,7 @@ export default {
         return
       }
       this.cart.clear()
+      this.remarks.clear()
       this.errorMsg = ''
     },
     async submitOrder() {
@@ -66,6 +98,7 @@ export default {
         const order = await ordersApi.create(payload, key)
         if (this.cart.ownerId !== ownerId) return
         this.cart.consume(payload.items, groupKey)
+        this.remarks.delete(groupKey)
         ElMessage.success('下单成功，正在为你备餐')
         if (this.$route === checkoutRoute) {
           await this.$router.push({ name: 'order-detail', params: { id: order.id } })
@@ -85,10 +118,16 @@ export default {
     :is="phonePreview ? 'PhoneFrame' : 'OrderShell'"
     :class="{ 'cart-preview': phonePreview }"
   >
-    <div class="cart-page" :class="{ 'cart-page--compact': compactCheckout }">
+    <div
+      class="cart-page"
+      :class="{ 'cart-page--compact': compactCheckout, 'cart-page--ready': group }"
+    >
       <div class="order-section-head">
         <div>
           <h1>餐车</h1>
+          <p v-if="!cart.isEmpty">
+            已选 {{ cart.count }} 份，来自 {{ cart.byStall.length }} 个档口
+          </p>
         </div>
         <el-button v-if="!cart.isEmpty" :disabled="submitting" @click="clearCart"
           >清空餐车</el-button
@@ -104,16 +143,34 @@ export default {
         @action="$router.push({ name: phonePreview ? 'mobile-order' : 'menu' })"
       />
 
-      <div v-else class="cart-layout">
+      <StallPicker
+        v-if="cart.byStall.length > 1"
+        :groups="cart.byStall"
+        :model-value="group.key"
+        :disabled="submitting"
+        @update:model-value="selectStall"
+      />
+
+      <div v-if="group" class="cart-layout">
         <div class="cart-main">
-          <section v-for="group in cart.byStall" :key="group.key" class="stall-block">
+          <section
+            v-for="stallGroup in cart.byStall"
+            :key="stallGroup.key"
+            class="stall-block"
+            :class="{ 'stall-block--selected': stallGroup.key === group.key }"
+          >
             <header class="stall-block__head">
               <span class="stall-block__icon"><AppIcon name="Store" :size="16" /></span>
-              <strong>{{ group.stall }}</strong>
-              <span class="stall-block__sub">小计 ¥{{ group.subtotal.toFixed(2) }}</span>
+              <strong>{{ stallGroup.stall }}</strong>
+              <span
+                v-if="cart.byStall.length > 1 && stallGroup.key === group.key"
+                class="stall-block__state"
+                >本次结算</span
+              >
+              <span class="stall-block__sub">小计 ¥{{ stallGroup.subtotal.toFixed(2) }}</span>
             </header>
 
-            <div class="cart-line" v-for="item in group.items" :key="item.dishId">
+            <div class="cart-line" v-for="item in stallGroup.items" :key="item.dishId">
               <img :src="image(item.image)" :alt="item.name" class="cart-line__img" />
               <div class="cart-line__info">
                 <strong>{{ item.name }}</strong>
@@ -153,45 +210,43 @@ export default {
               </button>
             </div>
           </section>
+        </div>
 
-          <section class="remark-block">
-            <label for="cart-remark">备注口味（可选）</label>
+        <aside class="cart-summary" aria-label="本次订单">
+          <h3>本次订单</h3>
+          <div class="cart-pickup">
+            <AppIcon name="MapPin" :size="18" />
+            <div>
+              <strong>{{ group.stall }}</strong>
+              <p>{{ pickupSite || '档口自取' }}</p>
+            </div>
+          </div>
+          <label class="summary-row summary-row--meal">
+            用餐时段
+            <select
+              :value="cart.meal"
+              class="menu-select"
+              :disabled="submitting"
+              @change="cart.setMeal($event.target.value)"
+            >
+              <option v-for="meal in meals" :key="meal.key" :value="meal.key">
+                {{ meal.label }}
+              </option>
+            </select>
+          </label>
+          <div class="remark-block">
+            <label for="cart-remark">本单口味备注（可选）</label>
             <el-input
               id="cart-remark"
               v-model="remark"
               type="textarea"
               :rows="2"
+              :disabled="submitting"
               maxlength="100"
               show-word-limit
               placeholder="例如：少放辣、不要香菜…"
             />
-          </section>
-        </div>
-
-        <aside class="cart-summary">
-          <h3>订单信息</h3>
-          <StallPicker
-            :groups="cart.byStall"
-            :model-value="group.key"
-            :disabled="submitting"
-            @update:model-value="selectedKey = $event"
-          />
-          <div class="summary-row">
-            <span>取餐档口</span><strong>{{ group.stall }}</strong>
           </div>
-          <div class="summary-row">
-            <span>用餐时段</span>
-            <strong>{{ mealLabel }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>菜品数量</span>
-            <strong>{{ group.count }} 件</strong>
-          </div>
-          <div class="summary-row">
-            <span>备餐时间</span>
-            <strong>约 15 分钟</strong>
-          </div>
-          <div class="summary-divider"></div>
           <div v-if="!compactCheckout" class="summary-total">
             <span>应付合计</span>
             <PriceTag :value="group.subtotal" size="lg" />
@@ -199,29 +254,34 @@ export default {
           <div v-if="errorMsg" class="summary-error" role="alert">
             <AppIcon name="CircleAlert" :size="15" /> {{ errorMsg }}
           </div>
-          <SubmitBar
-            v-if="compactCheckout"
-            class="cart-submit-bar"
-            :price="group.subtotalCents"
-            :loading="submitting"
-            :safe-area-inset-bottom="false"
-            label="应付合计"
-            button-text="提交订单"
-            button-color="var(--forest)"
-            @submit="submitOrder"
-          />
           <el-button
-            v-else
+            v-if="!compactCheckout"
             type="primary"
             class="submit-btn"
             :loading="submitting"
             @click="submitOrder"
           >
-            提交订单 · ¥{{ group.subtotal.toFixed(2) }}
+            提交订单
           </el-button>
-          <p class="summary-hint"><AppIcon name="Info" :size="13" /> 价格以提交时服务端核算为准</p>
+          <p class="summary-hint">
+            <AppIcon name="Ticket" :size="14" /> 下单后可在订单中查看取餐码
+          </p>
         </aside>
       </div>
+
+      <SubmitBar
+        v-if="compactCheckout && group"
+        class="cart-submit-bar"
+        :price="group.subtotalCents"
+        :loading="submitting"
+        :safe-area-inset-bottom="false"
+        label="本单合计"
+        button-text="提交订单"
+        button-color="var(--forest)"
+        @submit="submitOrder"
+      >
+        <span class="cart-submit-bar__stall">{{ group.stall }}</span>
+      </SubmitBar>
     </div>
   </component>
 </template>
@@ -247,7 +307,6 @@ export default {
   gap: var(--space-4);
 }
 .stall-block,
-.remark-block,
 .cart-summary {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -255,9 +314,13 @@ export default {
   padding: var(--space-5);
   box-shadow: var(--shadow-2);
 }
+.stall-block--selected {
+  border-color: var(--brand-300);
+}
 .stall-block__head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   padding-bottom: var(--space-3);
@@ -280,6 +343,13 @@ export default {
   margin-left: auto;
   color: var(--muted);
   font-size: var(--fs-12);
+}
+.stall-block__state {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-xs);
+  color: var(--forest);
+  background: var(--brand-50);
+  font-size: var(--fs-11);
 }
 .cart-line {
   display: flex;
@@ -337,6 +407,9 @@ export default {
   color: var(--ink);
   margin-bottom: var(--space-2);
 }
+.remark-block {
+  margin: var(--space-4) 0;
+}
 .cart-summary {
   position: sticky;
   top: calc(var(--workspace-header-height) + var(--space-4));
@@ -346,29 +419,39 @@ export default {
   font-size: var(--fs-18);
   color: var(--ink);
 }
+.cart-pickup {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  background: var(--brand-50);
+  border-radius: var(--radius-sm);
+  color: var(--forest);
+}
+.cart-pickup p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-12);
+}
 .summary-row {
   display: flex;
   justify-content: space-between;
   margin-bottom: var(--space-3);
   font-size: var(--fs-13);
 }
-.summary-row span {
+.summary-row--meal {
+  align-items: center;
+  gap: var(--space-2);
   color: var(--muted);
-}
-.summary-row strong {
-  color: var(--ink);
-  font-weight: var(--fw-medium);
-}
-.summary-divider {
-  height: 1px;
-  background: var(--line);
-  margin: var(--space-4) 0;
 }
 .summary-total {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-4);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
 }
 .summary-total > span {
   font-size: var(--fs-14);
@@ -404,11 +487,13 @@ export default {
 .cart-preview .cart-page {
   padding: var(--space-7) var(--space-3) var(--space-4);
 }
+.cart-page--compact.cart-page--ready {
+  padding-bottom: calc(var(--van-submit-bar-height) + var(--space-4));
+}
 .cart-page--compact .cart-layout {
   grid-template-columns: minmax(0, 1fr);
 }
 .cart-page--compact .stall-block,
-.cart-page--compact .remark-block,
 .cart-page--compact .cart-summary {
   padding: var(--space-3);
 }
@@ -445,14 +530,32 @@ export default {
   grid-area: remove;
   justify-self: end;
 }
-.cart-summary .cart-submit-bar {
-  position: static;
+.cart-page .cart-submit-bar {
+  bottom: var(--workspace-bottom-nav, 0px);
+  z-index: var(--z-raised);
+  border-top: 1px solid var(--line);
   --van-submit-bar-price-color: var(--danger-600);
   --van-submit-bar-text-color: var(--ink);
 }
+.cart-preview .cart-page--ready {
+  padding-bottom: var(--space-4);
+}
+.cart-preview .cart-submit-bar {
+  position: sticky;
+  margin-top: var(--space-4);
+}
 .cart-submit-bar :deep(.van-submit-bar__bar) {
-  padding: 0;
+  padding-inline: var(--space-3);
   gap: var(--space-2);
+}
+.cart-submit-bar__stall {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--forest);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
 }
 @media (max-width: 900px) {
   .cart-layout {

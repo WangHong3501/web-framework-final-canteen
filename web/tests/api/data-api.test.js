@@ -108,6 +108,7 @@ test('旧运行库追加新种子菜品，保留历史订单和人工修改的�
   const legacy = await startApi({
     mutateSeed(seed) {
       delete seed.catalog
+      seed.users = seed.users.filter((user) => user.role !== 'merchant' || user.id === 'merchant-1')
       seed.dishes = seed.dishes.filter(
         (dish) => !dish.id.startsWith('dish-seed-') && dish.id !== 'dish-11',
       )
@@ -128,6 +129,11 @@ test('旧运行库追加新种子菜品，保留历史订单和人工修改的�
       false,
     )
     assert.equal(upgraded.dishes.length, seedDishes.length)
+    for (const stall of [2, 3, 4]) {
+      const token = await legacy.login({ account: `merchant0${stall}`, role: 'merchant' })
+      const session = await legacy.request('/auth/session', { token })
+      assert.equal(session.body.user.stallId, `stall-${stall}`)
+    }
     upgraded.dishes = upgraded.dishes.filter((dish) => dish.id !== 'dish-seed-13')
     fs.writeFileSync(legacy.dbFile, JSON.stringify(upgraded))
     database.prepareDatabase(legacy.dbFile)

@@ -64,6 +64,7 @@ export function isValidDishId(id) {
 export function isDishSoldOut(dish) {
   return (
     dish?.status === 'danger' ||
+    dish?.status === 'sold' ||
     dish?.soldOut === true ||
     dish?.available === false ||
     dish?.listed === false
@@ -82,6 +83,25 @@ export function resolveDishImage(src, baseUrl = '/') {
 export function toCents(yuan) {
   const num = Number(yuan)
   return Number.isFinite(num) ? Math.round(num * 100) : 0
+}
+
+export function priceSavingsCents(price, originalPrice) {
+  const current = toCents(price)
+  return current > 0 ? Math.max(0, toCents(originalPrice) - current) : 0
+}
+
+export function dishSavingsLabel(dish) {
+  const savings = priceSavingsCents(dish.price, dish.originalPrice)
+  return savings ? `省 ¥${formatYuanFromCents(savings).replace(/\.00$/, '')}` : ''
+}
+
+export function hasAvailableOffer(dish) {
+  return !isDishSoldOut(dish) && priceSavingsCents(dish.price, dish.originalPrice) > 0
+}
+
+export function orderMenuDishes(dishes) {
+  const priority = (dish) => (isDishSoldOut(dish) ? 2 : hasAvailableOffer(dish) ? 0 : 1)
+  return [...dishes].sort((a, b) => priority(a) - priority(b))
 }
 
 export function formatYuanFromCents(cents) {

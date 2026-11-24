@@ -108,7 +108,7 @@ test('学生越权访问被拦截，伪造会话不能从持久化恢复', async
   await page.reload()
   await expect(page).toHaveURL(/\/login/)
 })
-test('商家可进入商家入口，退出后后退不能进入受保护页面', async ({ page }) => {
+test('商家可切换档口账号，退出后回退仍受路由守卫保护', async ({ page }) => {
   await page.goto('/#/')
   await page.getByTestId('demo-merchant').click()
   await expect(page).toHaveURL(/\/orders$/)
@@ -117,6 +117,15 @@ test('商家可进入商家入口，退出后后退不能进入受保护页面',
   await nav.getByRole('link', { name: '菜品管理', exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/dishes$/)
   await expect(page.getByRole('heading', { name: '欢迎来到档口工作台' })).toBeVisible()
+  await expect(page.locator('.admin-subtitle')).toContainText('青禾小厨')
+  await page.getByRole('button', { name: '切换档口', exact: true }).click()
+  await expect(page).toHaveURL(/\/login\?role=merchant$/)
+  await page.getByRole('combobox', { name: '演示档口' }).selectOption('merchant02')
+  await page.getByTestId('demo-merchant').click()
+  await expect(page).toHaveURL(/\/orders$/)
+  await nav.getByRole('link', { name: '菜品管理', exact: true }).click()
+  await expect(page.locator('.admin-subtitle')).toContainText('麦香面馆')
+  await expect(page.getByRole('link', { name: '招牌红烧肉饭', exact: true })).toHaveCount(0)
   await nav.getByRole('link', { name: '账号', exact: true }).click()
   await expect(page.getByRole('menuitem')).toHaveText([
     '食光概览',
@@ -183,5 +192,7 @@ test('移动端 375px、平板 768px 无横向溢出，减少动效可正常登�
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.setViewportSize({ width: 768, height: 1024 })
   await expect(page.getByRole('heading', { name: /王鸿/, level: 1 })).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true)
 })

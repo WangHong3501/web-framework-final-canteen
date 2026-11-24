@@ -10,6 +10,7 @@ import { useCartStore } from '@/stores/cart'
 import {
   DEFAULT_CUISINE,
   DISH_MEALS,
+  dishSavingsLabel,
   isDishSoldOut,
   resolveDishImage,
 } from '@/components/dishes/dish-meta'
@@ -17,6 +18,7 @@ import PhoneFrame from '@/components/ui/PhoneFrame.vue'
 import StatusTag from '@/components/ui/StatusTag.vue'
 import PriceTag from '@/components/ui/PriceTag.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import MenuResults from '@/components/dishes/MenuResults.vue'
 
 // Vant 的 Stepper 将属性转发到外层，这里为原生控件提供独立名称。
 function nameQuantityControls(root, { value: dish }) {
@@ -38,6 +40,7 @@ export default {
     StatusTag,
     PriceTag,
     AppIcon,
+    MenuResults,
   },
   props: {
     preview: Boolean,
@@ -51,6 +54,10 @@ export default {
     cuisine: { type: String, required: true },
     keyword: { type: String, required: true },
     hasFilters: Boolean,
+    onlyOffers: Boolean,
+    offerCount: { type: Number, required: true },
+    pickupLabel: { type: String, required: true },
+    detailDestination: { type: Function, required: true },
     loading: Boolean,
     loadError: { type: String, default: '' },
   },
@@ -60,8 +67,8 @@ export default {
     'update:category',
     'update:cuisine',
     'update:keyword',
+    'update:onlyOffers',
     'update-quantity',
-    'open-dish',
     'retry',
     'reset',
   ],
@@ -71,6 +78,7 @@ export default {
   },
   methods: {
     soldOut: isDishSoldOut,
+    savingsLabel: dishSavingsLabel,
     image(src) {
       return resolveDishImage(src, import.meta.env.BASE_URL)
     },
@@ -92,7 +100,10 @@ export default {
   >
     <div class="mobile-menu" :class="{ 'mobile-menu--has-cart': cart.count > 0 }">
       <div class="mobile-menu__heading">
-        <h1>今日菜单</h1>
+        <div>
+          <h1>今日菜单</h1>
+          <p class="menu-pickup-label"><AppIcon name="MapPin" :size="14" />{{ pickupLabel }}</p>
+        </div>
         <button
           v-if="hasFilters && dishes.length"
           type="button"
@@ -160,6 +171,14 @@ export default {
         </div>
       </div>
 
+      <MenuResults
+        v-if="!loading && !loadError"
+        :count="dishes.length"
+        :offers="offerCount"
+        :model-value="onlyOffers"
+        @update:model-value="$emit('update:onlyOffers', $event)"
+      />
+
       <div v-if="loadError" class="m-state" role="alert">
         <AppIcon name="CircleAlert" :size="24" />
         <p>{{ loadError }}</p>
@@ -183,17 +202,20 @@ export default {
           </div>
           <div class="m-dish__body">
             <h3>
-              <button
-                type="button"
+              <router-link
+                :to="detailDestination(dish)"
                 class="m-dish__title"
                 :aria-label="`查看${dish.name}详情`"
-                @click="$emit('open-dish', dish)"
               >
                 {{ dish.name }}
-              </button>
+              </router-link>
             </h3>
+            <p class="m-dish__stall">{{ dish.stall }}</p>
             <p class="m-dish__desc">{{ dish.desc }}</p>
             <div class="m-dish__tags">
+              <span v-if="!soldOut(dish) && savingsLabel(dish)" class="dish-offer">{{
+                savingsLabel(dish)
+              }}</span>
               <StatusTag
                 v-if="dish.cuisine && dish.cuisine !== defaultCuisine"
                 type="info"
@@ -215,7 +237,13 @@ export default {
               />
             </div>
             <div class="m-dish__bottom">
-              <PriceTag :value="dish.price" :original="dish.originalPrice" size="md" />
+              <PriceTag
+                :value="dish.price"
+                :original="dish.originalPrice"
+                size="md"
+                variant="stacked"
+                :show-discount="false"
+              />
               <Stepper
                 v-quantity-labels="dish.name"
                 v-if="!soldOut(dish)"
@@ -224,7 +252,7 @@ export default {
                 :max="20"
                 :name="dish.name"
                 theme="round"
-                button-size="32"
+                button-size="36"
                 icon-size="14"
                 @change="$emit('update-quantity', dish, Number($event))"
               />

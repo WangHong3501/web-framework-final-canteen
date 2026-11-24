@@ -60,9 +60,12 @@ try {
     seedDishes.length,
   )
   const cuisine = page.getByLabel('菜系', { exact: true })
+  await page.getByRole('tab', { name: /青禾小厨/ }).click()
+  await expect(page.locator('.food-card').first()).toContainText('招牌红烧肉饭')
+  await capture(page, 'G5-08-菜单-桌面.png')
+  await page.getByRole('tab', { name: '全部档口', exact: true }).click()
   await cuisine.selectOption('闽菜')
   await expect(page.getByRole('heading', { name: '福州荔枝肉' })).toBeVisible()
-  await capture(page, 'G5-08-菜单-桌面.png')
   await cuisine.selectOption('川菜')
   await page.getByRole('button', { name: '将川味回锅肉加入餐车' }).click()
   await page.goto(base + '/#/cart')

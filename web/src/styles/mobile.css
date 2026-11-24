@@ -111,6 +111,8 @@
 .m-dish__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .m-dish__body h3 {
@@ -128,29 +130,33 @@
   text-align: left;
 }
 
-.m-dish__desc {
+.m-dish__desc,
+.m-dish__stall {
   margin: 0;
   color: var(--muted);
   font-size: var(--fs-12);
   line-height: var(--lh-aux);
 }
 
-.m-dish__tags,
-.m-dish__bottom {
+.m-dish__stall {
+  color: var(--forest);
+  margin-bottom: var(--space-1);
+}
+
+.m-dish__tags {
   display: flex;
   gap: var(--space-1);
   flex-wrap: wrap;
   margin-top: var(--space-1);
 }
 
-.m-dish__bottom .van-stepper {
-  margin-inline-start: auto;
-}
-
 .m-dish__bottom {
-  align-items: center;
-  justify-content: space-between;
-  margin-top: var(--space-2);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
 }
 
 .m-state {

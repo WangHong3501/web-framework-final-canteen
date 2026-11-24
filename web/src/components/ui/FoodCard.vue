@@ -2,7 +2,7 @@
 import StatusTag from './StatusTag.vue'
 import PriceTag from './PriceTag.vue'
 import AppIcon from './AppIcon.vue'
-import { DEFAULT_CUISINE, isDishSoldOut } from '@/components/dishes/dish-meta'
+import { DEFAULT_CUISINE, dishSavingsLabel, isDishSoldOut } from '@/components/dishes/dish-meta'
 const STATUS_TEXT = {
   success: '可点餐',
   warning: '余量少',
@@ -22,12 +22,13 @@ export default {
       type: Object,
       required: true,
     },
+    detailTo: { type: Object, default: null },
   },
   components: { StatusTag, PriceTag, AppIcon },
   emits: ['add'],
   computed: {
     soldOut() {
-      return isDishSoldOut(this.food) || this.food.status === 'sold'
+      return isDishSoldOut(this.food)
     },
     statusText() {
       return STATUS_TEXT[this.food.status] || ''
@@ -44,6 +45,9 @@ export default {
     cuisine() {
       return this.food.cuisine === DEFAULT_CUISINE ? '' : this.food.cuisine
     },
+    offerLabel() {
+      return this.soldOut ? '' : dishSavingsLabel(this.food)
+    },
   },
 }
 </script>
@@ -53,11 +57,14 @@ export default {
     <div class="food-media">
       <img :src="food.image" :alt="food.imageAlt || food.name" loading="lazy" />
       <div class="food-chips">
-        <StatusTag v-if="badges.includes('招牌')" type="brand" size="sm" text="招牌" />
-        <StatusTag v-if="badges.includes('新品')" type="new" size="sm" text="新品" />
+        <span v-if="offerLabel" class="dish-offer">{{ offerLabel }}</span>
+        <template v-else>
+          <StatusTag v-if="badges.includes('招牌')" type="brand" size="sm" text="招牌" />
+          <StatusTag v-if="badges.includes('新品')" type="new" size="sm" text="新品" />
+        </template>
       </div>
       <StatusTag
-        v-if="!soldOut && food.status"
+        v-if="!soldOut && food.status === 'warning'"
         :type="food.status"
         :text="statusText"
         size="sm"
@@ -70,7 +77,18 @@ export default {
     </div>
 
     <div class="food-info">
-      <h3 class="food-name">{{ food.name }}</h3>
+      <h3 class="food-name">
+        <router-link
+          v-if="detailTo"
+          :to="detailTo"
+          :aria-label="`查看${food.name}详情`"
+          class="food-detail"
+        >
+          {{ food.name }}
+        </router-link>
+        <template v-else>{{ food.name }}</template>
+      </h3>
+      <p v-if="food.stall" class="food-stall">{{ food.stall }}</p>
       <p class="food-desc">{{ food.desc }}</p>
 
       <div v-if="cuisine || spiceText || extraTags.length" class="food-meta">
@@ -86,7 +104,12 @@ export default {
       </div>
 
       <div class="food-bottom">
-        <PriceTag :value="food.price" size="md" :original="food.originalPrice" />
+        <PriceTag
+          :value="food.price"
+          size="md"
+          :original="food.originalPrice"
+          :show-discount="false"
+        />
         <slot name="action">
           <button class="text-button" type="button" :disabled="soldOut" @click="$emit('add', food)">
             {{ soldOut ? '明日再来' : '加入餐车' }}
@@ -99,6 +122,7 @@ export default {
 
 <style scoped>
 .food-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -106,13 +130,11 @@ export default {
   border: 1px solid var(--line);
   overflow: hidden;
   transition:
-    transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out),
     border-color var(--dur-base) var(--ease-out);
 }
 
 .food-card:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-3);
   border-color: var(--brand-200);
 }
@@ -120,7 +142,7 @@ export default {
 .food-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   background: var(--gray-100);
   overflow: hidden;
 }
@@ -169,10 +191,21 @@ export default {
 }
 
 .food-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3) 14px 14px;
+  padding: var(--space-4);
+}
+
+.food-detail::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.food-detail:focus-visible {
+  outline-offset: 2px;
 }
 
 .food-name {
@@ -192,6 +225,12 @@ export default {
   white-space: nowrap;
 }
 
+.food-stall {
+  margin: 0;
+  color: var(--forest);
+  font-size: var(--fs-12);
+}
+
 .food-meta {
   display: flex;
   flex-wrap: wrap;
@@ -203,7 +242,13 @@ export default {
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-1);
+  min-height: calc(var(--size-control) + var(--space-2));
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+.food-bottom :deep(button) {
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 680px) {

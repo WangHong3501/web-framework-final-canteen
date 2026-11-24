@@ -38,6 +38,66 @@
         "mealTime": "11:30–12:00"
       },
       "lastLoginAt": null
+    },
+    {
+      "id": "merchant-2",
+      "account": "merchant02",
+      "name": "麦香面馆档口管理员",
+      "displayName": "麦香面馆",
+      "studentId": "",
+      "role": "merchant",
+      "stallId": "stall-2",
+      "phone": "",
+      "email": "",
+      "canteen": "第一食堂",
+      "avatarTone": "oat",
+      "preferences": {
+        "spice": "mild",
+        "cuisines": [],
+        "avoidIngredients": [],
+        "mealTime": "11:30–12:00"
+      },
+      "lastLoginAt": null
+    },
+    {
+      "id": "merchant-3",
+      "account": "merchant03",
+      "name": "轻食小站档口管理员",
+      "displayName": "轻食小站",
+      "studentId": "",
+      "role": "merchant",
+      "stallId": "stall-3",
+      "phone": "",
+      "email": "",
+      "canteen": "第一食堂",
+      "avatarTone": "oat",
+      "preferences": {
+        "spice": "mild",
+        "cuisines": [],
+        "avoidIngredients": [],
+        "mealTime": "11:30–12:00"
+      },
+      "lastLoginAt": null
+    },
+    {
+      "id": "merchant-4",
+      "account": "merchant04",
+      "name": "暖心烧味档口管理员",
+      "displayName": "暖心烧味",
+      "studentId": "",
+      "role": "merchant",
+      "stallId": "stall-4",
+      "phone": "",
+      "email": "",
+      "canteen": "第一食堂",
+      "avatarTone": "oat",
+      "preferences": {
+        "spice": "mild",
+        "cuisines": [],
+        "avoidIngredients": [],
+        "mealTime": "11:30–12:00"
+      },
+      "lastLoginAt": null
     }
   ],
   "stalls": [
@@ -447,7 +507,8 @@
       "spice": 0,
       "tags": [],
       "rating": 0,
-      "sales": 0
+      "sales": 0,
+      "originalPrice": 8
     },
     {
       "id": "dish-seed-20",
@@ -601,7 +662,8 @@
         }
       ],
       "rating": 0,
-      "sales": 0
+      "sales": 0,
+      "originalPrice": 16.5
     },
     {
       "id": "dish-seed-28",
@@ -701,7 +763,8 @@
       "spice": 0,
       "tags": [],
       "rating": 0,
-      "sales": 0
+      "sales": 0,
+      "originalPrice": 22
     },
     {
       "id": "dish-seed-33",
@@ -1284,5 +1347,7 @@
       "updatedAt": "2026-11-18T10:32:00.000Z"
     }
   ],
-  "catalog": { "revision": 1 }
+  "catalog": {
+    "revision": 2
+  }
 }
