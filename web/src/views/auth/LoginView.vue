@@ -22,7 +22,8 @@ export default {
         remember: false,
       },
       demoMerchants,
-      demoMerchant: choosingMerchant ? '' : demoMerchants[0].account,
+      merchantPickerOpen: choosingMerchant,
+      pendingMerchant: '',
       busy: false,
       error: '',
       helpOpen: false,
@@ -70,10 +71,15 @@ export default {
       if (this.busy) return
       const valid = await this.$refs.loginForm.validate().catch(() => false)
       if (!valid) return
+      return this.login({ ...this.form, account: this.form.account.trim() })
+    },
+    async login(credentials) {
+      if (this.busy) return
       this.busy = true
       this.error = ''
+      this.pendingMerchant = this.merchantPickerOpen ? credentials.account : ''
       try {
-        await this.userStore.login({ ...this.form, account: this.form.account.trim() })
+        await this.userStore.login(credentials)
         await this.$router.replace(
           safeDestination(this.$route.query.redirect, this.userStore.user.role),
         )
@@ -81,15 +87,15 @@ export default {
         this.error = requestMessage(error, '登录未完成，请核对账号后重试。')
       } finally {
         this.busy = false
+        this.pendingMerchant = ''
       }
     },
-    async demo(role) {
-      if (this.busy || (role === 'merchant' && !this.demoMerchant)) return
-      this.form.role = role
-      this.form.account = role === 'student' ? '32605150621' : this.demoMerchant
-      this.form.password = 'Shiguang@2026'
-      await this.$nextTick()
-      return this.submit()
+    demo(role, account = '32605150621') {
+      return this.login({ role, account, password: 'Shiguang@2026', remember: this.form.remember })
+    },
+    openMerchantPicker() {
+      this.error = ''
+      this.merchantPickerOpen = true
     },
   },
 }
@@ -166,7 +172,7 @@ export default {
             <el-checkbox v-model="form.remember" :disabled="busy">在此设备上保持登录</el-checkbox
             ><button type="button" class="text-button" @click="helpOpen = true">忘记密码？</button>
           </div>
-          <p v-if="error" class="form-error" role="alert">
+          <p v-if="error && !merchantPickerOpen" class="form-error" role="alert">
             <AppIcon name="CircleAlert" :size="17" />{{ error }}
           </p>
           <el-button type="primary" native-type="submit" class="login-submit" :loading="busy"
@@ -176,40 +182,24 @@ export default {
         </el-form>
         <div class="demo-entry" data-enter>
           <span>课程演示</span>
-          <div>
+          <div class="demo-entry__actions">
             <button
               type="button"
               :disabled="busy"
               data-testid="demo-student"
               @click="demo('student')"
             >
-              学生体验<AppIcon name="ArrowUpRight" :size="16" />
+              <AppIcon name="GraduationCap" :size="18" />学生体验
             </button>
-            <div class="demo-entry__merchant">
-              <select
-                v-model="demoMerchant"
-                class="menu-select"
-                aria-label="演示档口"
-                :disabled="busy"
-              >
-                <option disabled value="">选择档口</option>
-                <option
-                  v-for="merchant in demoMerchants"
-                  :key="merchant.account"
-                  :value="merchant.account"
-                >
-                  {{ merchant.name }} · {{ merchant.window }}
-                </option>
-              </select>
-              <button
-                type="button"
-                :disabled="busy || !demoMerchant"
-                data-testid="demo-merchant"
-                @click="demo('merchant')"
-              >
-                商家体验<AppIcon name="ArrowUpRight" :size="16" />
-              </button>
-            </div>
+            <button
+              type="button"
+              :disabled="busy"
+              aria-haspopup="dialog"
+              data-testid="demo-merchant"
+              @click="openMerchantPicker"
+            >
+              <AppIcon name="Store" :size="18" />商家体验
+            </button>
           </div>
         </div>
       </section>
@@ -239,6 +229,46 @@ export default {
     <footer class="login-footer">
       <span>食光校园 · 校园餐饮服务</span><span>认真对待每一顿饭，也认真对待你的每一天。</span>
     </footer>
+    <el-dialog
+      v-model="merchantPickerOpen"
+      class="merchant-picker"
+      title="选择体验档口"
+      width="450px"
+      align-center
+      append-to-body
+      destroy-on-close
+      :show-close="!busy"
+      :close-on-click-modal="!busy"
+      :close-on-press-escape="!busy"
+      @close="error = ''"
+    >
+      <p v-if="error" class="form-error" role="alert">
+        <AppIcon name="CircleAlert" :size="17" />{{ error }}
+      </p>
+      <ul class="merchant-picker__list">
+        <li v-for="merchant in demoMerchants" :key="merchant.account">
+          <button
+            type="button"
+            class="merchant-picker__option"
+            :disabled="busy"
+            @click="demo('merchant', merchant.account)"
+          >
+            <img :src="`${assetBase}${merchant.image}`" alt="" width="68" height="54" />
+            <span class="merchant-picker__label">
+              <strong>{{ merchant.name }}</strong>
+              <span>
+                {{
+                  pendingMerchant === merchant.account
+                    ? '正在登录…'
+                    : `${merchant.canteen} · ${merchant.window}`
+                }}
+              </span>
+            </span>
+            <AppIcon name="ChevronRight" :size="18" />
+          </button>
+        </li>
+      </ul>
+    </el-dialog>
     <el-dialog v-model="helpOpen" title="登录帮助" width="440px"
       ><div class="help-content">
         <p>学生请选择“我是学生”，使用学号登录；档口工作人员请选择“档口商家”。</p>

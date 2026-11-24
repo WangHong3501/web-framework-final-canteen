@@ -93,6 +93,10 @@ try {
   workbench.on('pageerror', (err) => errors.push(err.message))
   await workbench.goto(base + '/#/login?redirect=/orders')
   await workbench.getByTestId('demo-merchant').click()
+  await workbench
+    .getByRole('dialog', { name: '选择体验档口' })
+    .getByRole('button', { name: /青禾小厨/ })
+    .click()
   const row = workbench.locator('.order-row').filter({ hasText: orderId })
   await row.getByRole('button', { name: '通知取餐' }).click()
   await expect(row.locator('.order-row__status')).toHaveText('待取餐')

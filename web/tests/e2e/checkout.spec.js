@@ -8,6 +8,11 @@ fs.mkdirSync(shots, { recursive: true })
 async function signIn(page, role, target) {
   await page.goto(`/#/login?redirect=${encodeURIComponent(target)}`)
   await page.getByTestId(`demo-${role}`).click()
+  if (role === 'merchant')
+    await page
+      .getByRole('dialog', { name: '选择体验档口' })
+      .getByRole('button', { name: /青禾小厨/ })
+      .click()
   await expect(page).toHaveURL(new RegExp(target + '$'))
 }
 async function scan(page) {

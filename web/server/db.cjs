@@ -174,6 +174,22 @@ function upgradeDemoData(runtime, data, seed) {
 
   const existing = new Map(data.dishes.map((dish) => [dish?.id, dish]))
   const stalls = new Map(data.stalls.map((stall) => [stall?.id, stall?.name]))
+  const addedStalls = new Set()
+  // 有些旧运行库只有一个档口，且已被标为第 2 版。
+  if (previous < 3) {
+    for (const stall of seed.stalls) {
+      if (stalls.has(stall.id)) continue
+      data.stalls.push(stall)
+      stalls.set(stall.id, stall.name)
+      addedStalls.add(stall.id)
+    }
+    for (const user of seed.users.filter((entry) => entry.role === 'merchant')) {
+      if (
+        !data.users.some((current) => current?.id === user.id || current?.account === user.account)
+      )
+        data.users.push(user)
+    }
+  }
   for (const dish of seed.dishes) {
     const current = existing.get(dish.id)
     if (current) {
@@ -189,19 +205,13 @@ function upgradeDemoData(runtime, data, seed) {
       }
       continue
     }
-    // 新种子菜品使用独立的编号前缀，避开老运行库里由商家新增的 dish-NN。
+    // 补入的档口恢复完整菜单，已有档口只在首次升级时追加新编号的菜品。
     const stall = stalls.get(dish.stallId)
-    if (previous < 1 && dish.id.startsWith('dish-seed-') && stall)
+    if (
+      stall &&
+      (addedStalls.has(dish.stallId) || (previous < 1 && dish.id.startsWith('dish-seed-')))
+    )
       data.dishes.push({ ...dish, stall })
-  }
-  if (previous < 2) {
-    for (const user of seed.users.filter((entry) => entry.role === 'merchant')) {
-      if (
-        stalls.has(user.stallId) &&
-        !data.users.some((current) => current?.id === user.id || current?.account === user.account)
-      )
-        data.users.push(user)
-    }
   }
   data.catalog = { ...data.catalog, revision }
 

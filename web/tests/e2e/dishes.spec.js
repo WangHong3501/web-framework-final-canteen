@@ -13,6 +13,11 @@ const merchantDishCount = seedDishes.filter((dish) => dish.stallId === 'stall-1'
 async function demoLogin(page, role = 'student') {
   await page.goto('/#/login')
   await page.getByTestId(`demo-${role}`).click()
+  if (role === 'merchant')
+    await page
+      .getByRole('dialog', { name: '选择体验档口' })
+      .getByRole('button', { name: /青禾小厨/ })
+      .click()
   await expect(page).toHaveURL(role === 'merchant' ? /\/orders$/ : /\/menu$/)
 }
 

@@ -144,6 +144,42 @@ test('旧运行库追加新种子菜品，保留历史订单和人工修改的�
   }
 })
 
+test('第 2 版单档口运行库补齐档口与账号，原有菜品和订单保留', async () => {
+  let original
+  const legacy = await startApi({
+    mutateSeed(seed) {
+      seed.catalog.revision = 2
+      seed.stalls = seed.stalls.filter((stall) => stall.id === 'stall-1')
+      seed.users = seed.users.filter(
+        (user) => user.role !== 'merchant' || user.stallId === 'stall-1',
+      )
+      seed.dishes = seed.dishes.filter(
+        (dish) => dish.stallId === 'stall-1' && dish.id !== 'dish-11',
+      )
+      seed.dishes[0].price = 15
+      original = structuredClone(seed)
+    },
+  })
+  try {
+    const upgraded = JSON.parse(fs.readFileSync(legacy.dbFile, 'utf8'))
+    assert.equal(upgraded.stalls.length, 4)
+    assert.deepEqual(
+      upgraded.dishes.filter((dish) => dish.stallId === 'stall-1'),
+      original.dishes,
+    )
+    assert.deepEqual(upgraded.orders, original.orders)
+    for (const stall of [2, 3, 4]) {
+      const token = await legacy.login({ account: `merchant0${stall}`, role: 'merchant' })
+      const session = await legacy.request('/auth/session', { token })
+      const stallId = `stall-${stall}`
+      assert.equal(session.body.user.stallId, stallId)
+      assert.ok(upgraded.dishes.some((dish) => dish.stallId === stallId))
+    }
+  } finally {
+    await legacy.close()
+  }
+})
+
 test('菜品写接口拒绝未知字段、非法枚举和跨档口新增', async () => {
   const unknown = await api.request('/dishes', {
     method: 'POST',

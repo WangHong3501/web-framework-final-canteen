@@ -2,21 +2,29 @@
   {
     "account": "merchant01",
     "name": "青禾小厨",
-    "window": "A 窗口"
+    "canteen": "第一食堂",
+    "window": "A 窗口",
+    "image": "images/dish-01.webp"
   },
   {
     "account": "merchant02",
     "name": "麦香面馆",
-    "window": "B 窗口"
+    "canteen": "第一食堂",
+    "window": "B 窗口",
+    "image": "images/dish-06.webp"
   },
   {
     "account": "merchant03",
     "name": "轻食小站",
-    "window": "C 窗口"
+    "canteen": "第一食堂",
+    "window": "C 窗口",
+    "image": "images/dish-03.webp"
   },
   {
     "account": "merchant04",
     "name": "暖心烧味",
-    "window": "D 窗口"
+    "canteen": "第一食堂",
+    "window": "D 窗口",
+    "image": "images/dish-32.webp"
   }
 ]
